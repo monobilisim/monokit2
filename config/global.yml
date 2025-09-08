@@ -1,0 +1,25 @@
+project-identifier: "test"
+hostname: "test"
+
+log-location: "/var/log/monokit2.log"
+
+zulip-alarm:
+  enabled: true
+  interval: 3
+  webhook-urls:
+    - example.com
+    - example2.com
+
+  bot-api:
+    enabled: false
+    alarm-url: https://example.com
+    email: test-bot@example.com
+    api-key: testkey
+    user-emails:
+      - user@example.com
+
+redmine:
+  enabled: true
+  api-key: ""
+  url: ""
+  interval: 10
