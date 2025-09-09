@@ -16,6 +16,11 @@ func main() {
 		panic("Failed to create log directory: " + err.Error())
 	}
 
+	if err = lib.InitializeDatabase(); err != nil {
+		fmt.Printf("Error initializing database: %v\n", err)
+		return
+	}
+
 	logger, err := lib.InitLogger()
 	if err != nil {
 		fmt.Printf("Error initializing logger: %v\n", err)

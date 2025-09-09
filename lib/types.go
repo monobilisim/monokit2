@@ -1,9 +1,12 @@
 package lib
 
+import "gorm.io/gorm"
+
 type GlobalConfigType struct {
 	ProjectIdentifier string `yaml:"project-identifier"`
 	Hostname          string `yaml:"hostname"`
 	LogLocation       string `yaml:"log-location"`
+	SqliteLocation    string `yaml:"sqlite-location"`
 
 	ZulipAlarm struct {
 		Enabled     bool     `yaml:"enabled"`
@@ -66,4 +69,30 @@ type OsHealthConfigType struct {
 		Enabled          bool `yaml:"enabled"`
 		DiskPartUseLimit int  `yaml:"disk-part-use-limit"`
 	} `yaml:"disk-usage-alarm"`
+}
+
+type ZulipAlarm struct {
+	gorm.Model
+	Id                uint   `gorm:"primaryKey"`
+	ProjectIdentifier string `gorm:"text"`
+	Hostname          string `gorm:"text"`
+	Content           string `gorm:"text"`
+}
+
+type Issue struct {
+	gorm.Model
+	Id           int    `gorm:"int" json:"id,omitempty"`
+	Notes        string `gorm:"text" json:"notes,omitempty"`
+	ProjectId    string `gorm:"text" json:"project_id,omitempty"`
+	TrackerId    int    `gorm:"int" json:"tracker_id,omitempty"`
+	Description  string `gorm:"text" json:"description,omitempty"`
+	Subject      string `gorm:"text" json:"subject,omitempty"`
+	PriorityId   int    `gorm:"int" json:"priority_id,omitempty"`
+	StatusId     int    `gorm:"int" json:"status_id,omitempty"`
+	AssignedToId string `gorm:"text" json:"assigned_to_id"`
+	Service      string `gorm:"text" json:"-"` // not a JSON field, used internally
+}
+
+type RedmineIssue struct {
+	Issue Issue `json:"issue"`
 }

@@ -2,6 +2,7 @@ project-identifier: "test"
 hostname: "test"
 
 log-location: "/var/log/monokit2.log"
+sqlite-location: "/var/lib/monokit2/monokit2.db"
 
 zulip-alarm:
   enabled: true

@@ -71,7 +71,9 @@ func sendZulipAlarm(message string) error {
 			err := sendZulipWebhookAlarm(url, message)
 			if err != nil {
 				Logger.Error().Err(err).Msgf("Failed to send Zulip webhook alarm to %s", url)
+				continue
 			}
+			DB.Create(&ZulipAlarm{ProjectIdentifier: GlobalConfig.ProjectIdentifier, Hostname: GlobalConfig.Hostname, Content: message})
 		}
 	}
 
@@ -103,6 +105,15 @@ func sendZulipWebhookAlarm(url string, message string) error {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		Logger.Error().Err(err).Msgf("Received non-2xx response: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func CreateRedmineIssue(issue Issue) error {
+	if !GlobalConfig.Redmine.Enabled {
+		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
+		return nil
 	}
 
 	return nil
