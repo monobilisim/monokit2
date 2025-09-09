@@ -2,11 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	lib "github.com/monobilisim/monokit2/lib"
 )
 
 func main() {
+	lib.InitConfig()
+
+	fmt.Println(lib.LogDir)
+	err := os.MkdirAll(lib.LogDir, os.ModePerm)
+	if err != nil {
+		panic("Failed to create log directory: " + err.Error())
+	}
+
 	logger, err := lib.InitLogger()
 	if err != nil {
 		fmt.Printf("Error initializing logger: %v\n", err)
@@ -14,7 +23,7 @@ func main() {
 	}
 
 	logger.Info().Msg("Logger initialized successfully")
-	fmt.Println(lib.GlobalConfig.ZulipAlarm.WebhookUrls)
 
-	lib.SendZulipAlarm("test")
+	logger.Info().Msg("Starting the Zulip alarm worker...")
+	lib.StartZulipAlarmWorker()
 }

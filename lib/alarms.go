@@ -4,9 +4,58 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"sync"
+	"time"
 )
 
-func SendZulipAlarm(message string) error {
+var (
+	zulipAlarmQueue []string
+	queueMutex      sync.Mutex
+)
+
+// This function actually queues the messages to be sent for not overwhelm the Zulip server when there are many alerts at the same time.
+func SendZulipAlarm(message string) {
+	queueMutex.Lock()
+	zulipAlarmQueue = append(zulipAlarmQueue, message)
+	queueMutex.Unlock()
+}
+
+func StartZulipAlarmWorker() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			processQueue()
+		}
+	}()
+}
+
+func processQueue() {
+	interval := time.Duration(GlobalConfig.ZulipAlarm.Interval) * time.Second
+
+	queueMutex.Lock()
+	defer queueMutex.Unlock()
+
+	if len(zulipAlarmQueue) == 0 {
+		return
+	}
+
+	newQueue := make([]string, 0, len(zulipAlarmQueue)) // to keep failed messages
+
+	for _, msg := range zulipAlarmQueue {
+		if err := sendZulipAlarm(msg); err != nil {
+			newQueue = append(newQueue, msg)
+		}
+
+		time.Sleep(interval)
+	}
+
+	zulipAlarmQueue = newQueue
+}
+
+func sendZulipAlarm(message string) error {
+
 	if !GlobalConfig.ZulipAlarm.Enabled {
 		Logger.Warn().Msg("Zulip alarm is bot enabled in the configuration")
 		return nil

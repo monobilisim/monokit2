@@ -3,14 +3,16 @@ package lib
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+var LogDir string
 var GlobalConfig GlobalConfigType
+var OsHealthConfig OsHealthConfigType
 
 func InitConfig() error {
-	// Parse global config
 	globalConfigExists := false
 	if _, err := os.Stat("/etc/mono/global.yml"); err == nil {
 		globalConfigExists = true
@@ -30,38 +32,27 @@ func InitConfig() error {
 		}
 	}
 
-	return nil
-}
+	// /var/log/monokit2/monokit.log -> /var/log/monokit2
+	LogDir = strings.Join(strings.Split(GlobalConfig.LogLocation, "/")[0:len(strings.Split(GlobalConfig.LogLocation, "/"))-1], "/")
 
-func init() {
-	if err := InitConfig(); err != nil {
-		fmt.Printf("Warning: %v\n", err)
+	osHealthConfigExists := false
+	if _, err := os.Stat("/etc/mono/os.yml"); err == nil {
+		osHealthConfigExists = true
+	} else {
+		return fmt.Errorf("global configuration file does not exist")
 	}
-}
 
-type GlobalConfigType struct {
-	ProjectIdentifier string `yaml:"project-identifier"`
-	Hostname          string `yaml:"hostname"`
-	LogLocation       string `yaml:"log-location"`
-
-	ZulipAlarm struct {
-		Enabled     bool     `yaml:"enabled"`
-		Interval    int      `yaml:"interval"`
-		WebhookUrls []string `yaml:"webhook-urls"`
-
-		BotApi struct {
-			Enabled    bool     `yaml:"enabled"`
-			AlarmUrl   string   `yaml:"alarm-urls"`
-			Email      string   `yaml:"email"`
-			ApiKey     string   `yaml:"api-key"`
-			UserEmails []string `yaml:"user-emails"`
+	if osHealthConfigExists {
+		osHealthConfigData, err := os.ReadFile("/etc/mono/os.yml")
+		if err != nil {
+			return fmt.Errorf("failed to read os configuration file: %w", err)
 		}
-	} `yaml:"zulip-alarm"`
 
-	Redmine struct {
-		Enabled  bool   `yaml:"enabled"`
-		ApiKey   string `yaml:"api-key"`
-		Url      string `yaml:"url"`
-		Interval int    `yaml:"interval"`
-	} `yaml:"redmine"`
+		err = yaml.Unmarshal(osHealthConfigData, &OsHealthConfig)
+		if err != nil {
+			return fmt.Errorf("failed to parse os configuration file: %w", err)
+		}
+	}
+
+	return nil
 }

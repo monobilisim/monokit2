@@ -10,6 +10,7 @@ zulip-alarm:
     - example.com
     - example2.com
 
+  # not implemented
   bot-api:
     enabled: false
     alarm-url: https://example.com
@@ -18,6 +19,7 @@ zulip-alarm:
     user-emails:
       - user@example.com
 
+# not implemented
 redmine:
   enabled: true
   api-key: ""
