@@ -3,6 +3,7 @@ hostname: "test"
 
 log-location: "/var/log/monokit2.log"
 sqlite-location: "/var/lib/monokit2/monokit2.db"
+plugins-location: "/var/lib/monokit2/plugins"
 
 zulip-alarm:
   enabled: true
@@ -20,7 +21,6 @@ zulip-alarm:
     user-emails:
       - user@example.com
 
-# not implemented
 redmine:
   enabled: true
   api-key: ""

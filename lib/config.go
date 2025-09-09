@@ -10,6 +10,7 @@ import (
 
 var LogDir string
 var DbDir string
+var PluginsDir string
 var GlobalConfig GlobalConfigType
 var OsHealthConfig OsHealthConfigType
 
@@ -37,6 +38,8 @@ func InitConfig() error {
 	LogDir = strings.Join(strings.Split(GlobalConfig.LogLocation, "/")[0:len(strings.Split(GlobalConfig.LogLocation, "/"))-1], "/")
 
 	DbDir = strings.Join(strings.Split(GlobalConfig.SqliteLocation, "/")[0:len(strings.Split(GlobalConfig.SqliteLocation, "/"))-1], "/")
+
+	PluginsDir = GlobalConfig.PluginsLocation
 
 	osHealthConfigExists := false
 	if _, err := os.Stat("/etc/mono/os.yml"); err == nil {

@@ -7,6 +7,7 @@ type GlobalConfigType struct {
 	Hostname          string `yaml:"hostname"`
 	LogLocation       string `yaml:"log-location"`
 	SqliteLocation    string `yaml:"sqlite-location"`
+	PluginsLocation   string `yaml:"plugins-location"`
 
 	ZulipAlarm struct {
 		Enabled     bool     `yaml:"enabled"`

@@ -6,7 +6,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	lib "github.com/monobilisim/monokit2/lib"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -31,7 +30,6 @@ func main() {
 	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {
 		logger.Info().Msg("Starting System Load monitoring...")
 
-		loadAverageFilePath := lib.LogDir + "/osHealth/load-average.txt"
 		loadAverage, err := load.Avg()
 
 		if err != nil {
@@ -46,14 +44,17 @@ func main() {
 
 		if loadAverage.Load1 >= lib.OsHealthConfig.SystemLoadAlarm.LimitMultiplier*float64(cpuCores) {
 			stringifiedLoadLimit := fmt.Sprintf("%.2f", lib.OsHealthConfig.SystemLoadAlarm.LimitMultiplier*float64(cpuCores))
-			lib.SendZulipAlarm("[osHealth] - " + lib.GlobalConfig.Hostname + " - System load has been more than " + stringifiedLoadLimit + " for last minute")
+			stringifiedInterval := fmt.Sprintf("%d", lib.GlobalConfig.ZulipAlarm.Interval)
 
-			timestamp := time.Now().Format("2006-01-02 15:04:05")
+			alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - System load has been more than " + stringifiedLoadLimit + " for last " + stringifiedInterval + " minutes"
 
-			err := os.WriteFile(loadAverageFilePath, []byte("zulip|"+timestamp), 644)
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to write load average to file")
-			}
+			lib.SendZulipAlarm(alarmMessage)
+
+			lib.DB.Create(&lib.ZulipAlarm{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Content:           alarmMessage,
+			})
 		}
 	}
 }

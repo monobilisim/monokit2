@@ -36,7 +36,6 @@ ram-usage-alarm:
       processes: 20
 
   issue-interval: 1
-  issue-multiplier: 1
   issue-limit: 20
 
 # not implemented
