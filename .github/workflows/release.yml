@@ -2,10 +2,12 @@ name: Go Build & Release
 
 on:
   push:
-    tags:
-      - "*"
     branches:
-      - main
+      - main # devel builds on main branch
+    tags:
+      - "v*" # full releases for main binary
+      - "*-v*" # full releases for plugins
+  workflow_dispatch:
 
 jobs:
   build:
