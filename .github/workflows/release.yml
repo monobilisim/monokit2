@@ -27,36 +27,29 @@ jobs:
         run: |
           mkdir -p ./bin
           TAG_NAME=${GITHUB_REF##*/}
-          ALL_BINARIES=""
 
           if [[ "$TAG_NAME" == v* ]]; then
             # Main release
             go build -o ./bin/monokit2 ./main.go
-            ALL_BINARIES="bin/monokit2"
 
           elif [[ "$TAG_NAME" == *-v* ]]; then
             # Plugin release (dynamic plugin name)
             PLUGIN_NAME=${TAG_NAME%%-*}
             cd plugins/$PLUGIN_NAME
             go build --tags=$PLUGIN_NAME -o ../bin/
-            ALL_BINARIES="plugins/bin/$PLUGIN_NAME"
 
           else
             # Always build the main devel binary
             go build -o ./bin/monokit2-devel ./main.go
-            ALL_BINARIES="bin/monokit2-devel"
 
             ACTIVE_PLUGINS=(osHealth)
             # Build devel binaries for active plugins
             for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
               cd plugins/$PLUGIN_NAME || exit 1
               go build --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}-devel
-              ALL_BINARIES="$ALL_BINARIES plugins/bin/${PLUGIN_NAME}-devel"
               cd ../..
             done
           fi
-
-          echo "all_binaries=$ALL_BINARIES" >> $GITHUB_OUTPUT
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -74,6 +67,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: go-binaries
+          path: .
+
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install -y gh
 
@@ -88,7 +87,9 @@ jobs:
       - name: Upload release binary
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ steps.build.outputs.all_binaries }}
+          files: |
+            bin/*
+            plugins/bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -109,6 +110,8 @@ jobs:
           tag_name: "${{ github.ref_name }}-devel"
           name: Devel Release ${{ github.ref_name }}
           prerelease: true
-          files: ${{ steps.build.outputs.all_binaries }}
+          files: |
+            bin/*
+            plugins/bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
