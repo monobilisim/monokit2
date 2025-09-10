@@ -26,4 +26,12 @@ func main() {
 	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {
 		CheckSystemLoad(logger)
 	}
+
+	if lib.OsHealthConfig.RamUsageAlarm.Enabled {
+		CheckSystemRAM(logger)
+	}
+
+	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
+		CheckSystemDisk(logger)
+	}
 }
