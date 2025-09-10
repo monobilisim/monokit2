@@ -63,7 +63,8 @@ jobs:
         with:
           name: go-binaries
           path: |
-            ${{ steps.build.outputs.all_binaries }}
+            bin/
+            plugins/bin/
 
   release:
     needs: build
