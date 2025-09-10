@@ -29,43 +29,46 @@ jobs:
           TAG_NAME=${GITHUB_REF##*/}
 
           if [[ "$TAG_NAME" == v* ]]; then
+            ALL_BINARIES=""
+
             # Main release
             go build -o ./bin/monokit2 ./main.go
-            go build -o ./bin/monokit2-devel ./main.go
-            echo "binary=bin/monokit2" >> $GITHUB_OUTPUT
-            echo "devel_binary=bin/monokit2-devel" >> $GITHUB_OUTPUT
+            ALL_BINARIES="bin/monokit2"
 
           elif [[ "$TAG_NAME" == *-v* ]]; then
+            ALL_BINARIES=""
+
             # Plugin release (dynamic plugin name)
             PLUGIN_NAME=${TAG_NAME%%-*}
             go build -tags $PLUGIN_NAME -o ./bin/$PLUGIN_NAME ./main.go
-            go build -tags $PLUGIN_NAME -o ./bin/$PLUGIN_NAME-devel ./main.go
-            echo "binary=bin/$PLUGIN_NAME" >> $GITHUB_OUTPUT
-            echo "devel_binary=bin/$PLUGIN_NAME-devel" >> $GITHUB_OUTPUT
+            ALL_BINARIES="bin/$PLUGIN_NAME"
 
           else
+            ALL_BINARIES=""
+
             # Always build the main devel binary
             go build -o ./bin/monokit2-devel ./main.go
-            echo "devel_binary_monokit2=bin/monokit2-devel" >> $GITHUB_OUTPUT
+            ALL_BINARIES="bin/monokit2-devel"
 
-            ACTIVE_PLUGINS=(osHealth diskSaver)
+            ACTIVE_PLUGINS=(osHealth)
             # Build devel binaries for active plugins
             for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
               cd plugins/$PLUGIN_NAME || exit 1
               go build -tags "$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}-devel ./main.go
-              echo "devel_binary_${PLUGIN_NAME}=bin/${PLUGIN_NAME}-devel" >> $GITHUB_OUTPUT
+              ALL_BINARIES="$ALL_BINARIES plugins/bin/${PLUGIN_NAME}-devel"
               cd ../..
             done
+
           fi
+
+          echo "all_binaries=$ALL_BINARIES" >> $GITHUB_OUTPUT
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: go-binaries
           path: |
-            ${{ steps.build.outputs.binary }}
-            ${{ steps.build.outputs.devel_binary }}
-            ${{ join(' ', steps.build.outputs.*devel_binary_*) }}
+            ${{ steps.build.outputs.all_binaries }}
 
   release:
     needs: build
@@ -89,7 +92,7 @@ jobs:
       - name: Upload release binary
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ steps.build.outputs.binary }}
+          files: ${{ steps.build.outputs.all_binaries }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -110,6 +113,6 @@ jobs:
           tag_name: "${{ github.ref_name }}-devel"
           name: Devel Release ${{ github.ref_name }}
           prerelease: true
-          files: ${{ join(' ', steps.build.outputs.*devel_binary_*) }}
+          files: ${{ steps.build.outputs.all_binaries }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
