@@ -93,10 +93,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  devel-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: go-binaries
+          path: .
+
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
       - name: Delete existing devel prerelease (if exists)
         run: |
           set -e
-          DEVEL_TAG="${GITHUB_REF_NAME}-devel"
+          DEVEL_TAG="devel"
           if gh release view "$DEVEL_TAG" &>/dev/null; then
             echo "Deleting existing devel release: $DEVEL_TAG"
             gh release delete "$DEVEL_TAG" --yes
@@ -107,8 +124,8 @@ jobs:
       - name: Create devel prerelease
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "${{ github.ref_name }}-devel"
-          name: Devel Release ${{ github.ref_name }}
+          tag_name: "devel"
+          name: Devel Release (Latest)
           prerelease: true
           files: |
             bin/*
