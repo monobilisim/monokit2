@@ -27,25 +27,21 @@ jobs:
         run: |
           mkdir -p ./bin
           TAG_NAME=${GITHUB_REF##*/}
+          ALL_BINARIES=""
 
           if [[ "$TAG_NAME" == v* ]]; then
-            ALL_BINARIES=""
-
             # Main release
             go build -o ./bin/monokit2 ./main.go
             ALL_BINARIES="bin/monokit2"
 
           elif [[ "$TAG_NAME" == *-v* ]]; then
-            ALL_BINARIES=""
-
             # Plugin release (dynamic plugin name)
             PLUGIN_NAME=${TAG_NAME%%-*}
-            go build -tags $PLUGIN_NAME -o ./bin/$PLUGIN_NAME ./main.go
-            ALL_BINARIES="bin/$PLUGIN_NAME"
+            cd plugins/$PLUGIN_NAME
+            go build --tags=$PLUGIN_NAME -o ../bin/
+            ALL_BINARIES="plugins/bin/$PLUGIN_NAME"
 
           else
-            ALL_BINARIES=""
-
             # Always build the main devel binary
             go build -o ./bin/monokit2-devel ./main.go
             ALL_BINARIES="bin/monokit2-devel"
@@ -58,7 +54,6 @@ jobs:
               ALL_BINARIES="$ALL_BINARIES plugins/bin/${PLUGIN_NAME}-devel"
               cd ../..
             done
-
           fi
 
           echo "all_binaries=$ALL_BINARIES" >> $GITHUB_OUTPUT
