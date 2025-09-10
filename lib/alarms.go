@@ -16,26 +16,28 @@ var (
 )
 
 // Removed queueing because it was causing more problems than it was solving
-func SendZulipAlarm(message string, service *string, status *string) error {
+func SendZulipAlarm(message string, service *string, module *string, status *string) error {
 	var lastAlarm ZulipAlarm
 	var lastAlarms []ZulipAlarm
 	var err error
 
 	if service != nil {
 		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ?",
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
 				GlobalConfig.ProjectIdentifier,
 				GlobalConfig.Hostname,
-				service).
+				service,
+				module).
 			Order("id DESC").
 			Limit(1).
 			Find(&lastAlarm).Error
 
 		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ?",
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
 				GlobalConfig.ProjectIdentifier,
 				GlobalConfig.Hostname,
-				service).
+				service,
+				module).
 			Order("id DESC").
 			Limit(GlobalConfig.ZulipAlarm.Limit).
 			Find(&lastAlarms).Error
@@ -62,6 +64,11 @@ func SendZulipAlarm(message string, service *string, status *string) error {
 	if err != nil {
 		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
 		return err
+	}
+
+	// no extra checks needed if there are no previous alarms
+	if len(lastAlarms) == 0 {
+		return sendZulipAlarm(message)
 	}
 
 	// checking if alarms are duplicate

@@ -69,6 +69,7 @@ type ZulipAlarm struct {
 	Content           string `gorm:"text"`
 	Status            string `gorm:"text"` // down or up
 	Service           string `gorm:"text"` // plugin name
+	Module            string `gorm:"text"` // plugin's module name
 }
 
 type Issue struct {
@@ -82,7 +83,9 @@ type Issue struct {
 	PriorityId   int     `gorm:"int" json:"priority_id,omitempty"`
 	StatusId     int     `gorm:"int" json:"status_id,omitempty"`
 	AssignedToId string  `gorm:"text" json:"assigned_to_id"`
-	Service      *string `gorm:"text" json:"-"` // not a JSON field, used internally
+	Status       string  `gorm:"text" json:"status"` // down or up
+	Service      *string `gorm:"text" json:"-"`      // plugin name
+	Module       *string `gorm:"text" json:"-"`      // plugin's module name
 }
 
 type RedmineIssue struct {
