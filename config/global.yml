@@ -7,6 +7,7 @@ plugins-location: "/var/lib/monokit2/plugins"
 
 zulip-alarm:
   enabled: true
+  # if any message send to zulip, it'll wait interval * 60 seconds to send or update another message
   interval: 3
   webhook-urls:
     - example.com
@@ -25,4 +26,5 @@ redmine:
   enabled: true
   api-key: ""
   url: ""
+  # if any issue send to redmine, it'll wait interval * 60 seconds to send or update another issue
   interval: 10

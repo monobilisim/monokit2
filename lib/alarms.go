@@ -16,10 +16,50 @@ var (
 )
 
 // This function actually queues the messages to be sent for not overwhelm the Zulip server when there are many alerts at the same time.
-func SendZulipAlarm(message string) {
+func SendZulipAlarm(message string, service *string) bool {
+	var lastAlarm ZulipAlarm
+	var err error
+
+	if service != nil {
+		err = DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname,
+				service).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastAlarm).Error
+	}
+
+	if service == nil {
+		err = DB.
+			Where("project_identifier = ? AND hostname = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastAlarm).Error
+	}
+
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
+		return false
+	}
+
+	if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
+		if service != nil {
+			Logger.Info().Str("service", *service).Msgf("Enough time is not passed since the last alarm from %s, skipping this one", *service)
+		} else {
+			Logger.Info().Msgf("Enough time is not passed since the last alarm, skipping this one")
+		}
+		return false
+	}
+
 	queueMutex.Lock()
 	zulipAlarmQueue = append(zulipAlarmQueue, message)
 	queueMutex.Unlock()
+
+	return true
 }
 
 func StartZulipAlarmWorker() {
@@ -116,6 +156,43 @@ func CreateRedmineIssue(issue Issue) error {
 	if !GlobalConfig.Redmine.Enabled {
 		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
 		return nil
+	}
+
+	var lastIssue Issue
+	var err error
+
+	if issue.Service != nil {
+		err = DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname,
+				issue.Service).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastIssue).Error
+	}
+
+	if issue.Service == nil {
+		err = DB.
+			Where("project_identifier = ? AND hostname = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastIssue).Error
+	}
+
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
+		return err
+	}
+
+	if time.Since(lastIssue.CreatedAt) < time.Duration(GlobalConfig.Redmine.Interval)*time.Minute {
+		if issue.Service != nil {
+			Logger.Info().Str("service", *issue.Service).Msgf("Enough time is not passed since the last Issue from %s, skipping this one", *issue.Service)
+		} else {
+			Logger.Info().Msgf("Enough time is not passed since the last alarm, skipping this one")
+		}
 	}
 
 	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {

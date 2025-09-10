@@ -56,7 +56,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			if m.cursor < len(m.choices) {
 				m.selected = m.choices[m.cursor]
-				// Execute the selected plugin
 				pluginPath := filepath.Join(lib.PluginsDir, m.selected)
 				cmd := exec.Command(pluginPath)
 				cmd.Stdout = os.Stdout
