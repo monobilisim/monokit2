@@ -7,6 +7,10 @@ import (
 	lib "github.com/monobilisim/monokit2/lib"
 )
 
+var pluginName string = "osHealth"
+var up string = "up"
+var down string = "down"
+
 func main() {
 	lib.InitConfig()
 

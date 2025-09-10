@@ -14,12 +14,8 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-var pluginName string = "osHealth"
-var moduleName string = "memory"
-var up string = "up"
-var down string = "down"
-
 func CheckSystemRAM(logger zerolog.Logger) {
+	var moduleName string = "memory"
 
 	logger.Info().Msg("Starting RAM monitoring...")
 

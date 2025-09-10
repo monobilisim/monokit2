@@ -1,0 +1,131 @@
+//go:build osHealth
+// +build osHealth
+
+package main
+
+import (
+	"fmt"
+	"slices"
+	"strconv"
+
+	lib "github.com/monobilisim/monokit2/lib"
+	"github.com/rs/zerolog"
+	"github.com/shirou/gopsutil/v4/disk"
+)
+
+var supportedFilesystems = []string{"ext4", "ext3", "ext2", "xfs", "btrfs", "zfs", "fat32", "vfat"}
+
+func CheckSystemDisk(logger zerolog.Logger) {
+	var moduleName string = "disk"
+
+	logger.Info().Msg("Starting Disk Usage monitoring...")
+
+	if !lib.OsHealthConfig.DiskUsageAlarm.Enabled {
+		logger.Debug().Msg("Disk usage alarm is disabled")
+		return
+	}
+
+	diskPartitions, err := disk.Partitions(true)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get disk partitions")
+		return
+	}
+
+	var exceededDiskInfos []DiskInfo
+
+	for _, partition := range diskPartitions {
+		if !slices.Contains(supportedFilesystems, partition.Fstype) {
+			continue
+		}
+
+		usage, err := disk.Usage(partition.Mountpoint)
+		if err != nil {
+			logger.Error().Err(err).Str("mountpoint", partition.Mountpoint).Msg("Failed to get disk usage")
+			continue
+		}
+
+		logger.Debug().
+			Str("mountpoint", partition.Mountpoint).
+			Float64("usage_percent", usage.UsedPercent).
+			Msg("Disk usage information")
+
+		if usage.UsedPercent > float64(lib.OsHealthConfig.DiskUsageAlarm.Limit) {
+			diskInfo := DiskInfo{
+				Device:     partition.Device,
+				Mountpoint: partition.Mountpoint,
+				Used:       formatBytes(usage.Used),
+				Total:      formatBytes(usage.Total),
+				UsedPct:    usage.UsedPercent,
+				Fstype:     partition.Fstype,
+			}
+			exceededDiskInfos = append(exceededDiskInfos, diskInfo)
+		}
+	}
+
+	if len(exceededDiskInfos) > 0 {
+		alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - Disk usage exceeded " + strconv.Itoa(lib.OsHealthConfig.DiskUsageAlarm.Limit) + "% on the following partitions:\n\n"
+
+		for _, diskInfo := range exceededDiskInfos {
+			alarmMessage += fmt.Sprintf("%s: %.1f%% (%s/%s)\n", diskInfo.Mountpoint, diskInfo.UsedPct, diskInfo.Used, diskInfo.Total)
+		}
+
+		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
+		if err == nil {
+			lib.DB.Create(&lib.ZulipAlarm{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Content:           alarmMessage,
+				Service:           pluginName,
+				Module:            moduleName,
+				Status:            down,
+			})
+		}
+	} else {
+		var lastAlarm lib.ZulipAlarm
+
+		err := lib.DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+				lib.GlobalConfig.ProjectIdentifier,
+				lib.GlobalConfig.Hostname,
+				pluginName,
+				moduleName).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastAlarm).Error
+
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to get last alarm from database")
+			return
+		}
+
+		if lastAlarm.Status == down {
+			alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - All disk partitions are now under the limit of " + strconv.Itoa(lib.OsHealthConfig.DiskUsageAlarm.Limit) + "%"
+
+			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
+			if err == nil {
+				lib.DB.Create(&lib.ZulipAlarm{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Content:           alarmMessage,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            up,
+				})
+			}
+		}
+	}
+}
+
+// formatBytes converts bytes to human readable format
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}

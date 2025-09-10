@@ -30,3 +30,5 @@ redmine:
   url: ""
   # if any issue send to redmine, it'll wait interval * 60 seconds to send or update another issue
   interval: 10
+  # not implemented
+  limit: 10

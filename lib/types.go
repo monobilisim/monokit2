@@ -33,8 +33,6 @@ type GlobalConfigType struct {
 }
 
 type OsHealthConfigType struct {
-	Filesystems []string `yaml:"filesystems"`
-
 	SystemLoadAlarm struct {
 		Enabled         bool    `yaml:"enabled"`
 		LimitMultiplier float64 `yaml:"limit-multiplier"`

@@ -15,7 +15,9 @@ var (
 	queueMutex      sync.Mutex
 )
 
-// Removed queueing because it was causing more problems than it was solving
+// service = plugin name, module = specific module in the plugin, status = alarm status like "up" or "down"
+// service, module name and status can be nil if not applicable
+// instead of directly giving them as string, giving them as pointer to string
 func SendZulipAlarm(message string, service *string, module *string, status *string) error {
 	var lastAlarm ZulipAlarm
 	var lastAlarms []ZulipAlarm

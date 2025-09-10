@@ -1,36 +1,23 @@
-# not implemented
-filesystems:
-  - ext4
-  - ext3
-  - ext2
-  - xfs
-  - btrfs
-  - zfs
-  - fat32
-  - vfat
-
 system-load-alarm:
   enabled: true
   # cpu core count * %80 to trigger alarm by default
   limit-multiplier: 0.8
-  # not implemented sends what creates the load into alarm message
+  # sends what creates the load into alarm message
   top-processes:
     enabled: true
     processes: 20
 
-# not implemented
 ram-usage-alarm:
   enabled: true
   # %90 to trigger alarm by default
   limit: 90
-  # not implemented sends what creates the ram usage into alarm message
+  # sends what creates the ram usage into alarm message
   top-processes:
     enabled: true
     processes: 20
 
-# not implemented
 disk-usage-alarm:
   enabled: true
-  # This alarm limit is for individual partitions, because different partitions can be mounted on different OS parts.
+  # This alarm limit is for individual partitions, because different devices can be mounted on different OS parts.
   # %90 to trigger alarm by default
   limit: 90

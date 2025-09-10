@@ -15,12 +15,8 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-var pluginName string = "osHealth"
-var moduleName string = "sysload"
-var up string = "up"
-var down string = "down"
-
 func CheckSystemLoad(logger zerolog.Logger) {
+	var moduleName string = "sysload"
 
 	logger.Info().Msg("Starting System Load monitoring...")
 
