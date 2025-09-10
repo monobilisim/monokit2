@@ -83,12 +83,13 @@ func CheckSystemLoad(logger zerolog.Logger) {
 					return usages[i].CPU > usages[j].CPU
 				})
 
-				fmt.Printf("%-8s %-25s %-10s %-10s\n", "PID", "NAME", "CPU%", "RAM%")
+				alarmMessage += "\n\nTop CPU consuming processes:\n"
+				alarmMessage += fmt.Sprintf("%-8s %-25s %-10s %-10s\n", "PID", "NAME", "CPU%", "RAM%")
 				for i, u := range usages {
 					if i >= lib.OsHealthConfig.SystemLoadAlarm.TopProcesses.Processes {
 						break
 					}
-					fmt.Printf("%-8d %-25s %-10.2f %-10.2f\n", u.Pid, u.Name, u.CPU, u.RAM)
+					alarmMessage += fmt.Sprintf("%-8d %-25s %-10.2f %-10.2f\n", u.Pid, u.Name, u.CPU, u.RAM)
 				}
 			}
 		}
