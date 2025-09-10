@@ -1,0 +1,113 @@
+name: Go Build & Release
+
+on:
+  push:
+    tags:
+      - "*"
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Go 1.25
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.25
+
+      - name: Build binaries
+        id: build
+        run: |
+          mkdir -p ./bin
+          TAG_NAME=${GITHUB_REF##*/}
+
+          if [[ "$TAG_NAME" == v* ]]; then
+            # Main release
+            go build -o ./bin/monokit2 ./main.go
+            go build -o ./bin/monokit2-devel ./main.go
+            echo "binary=bin/monokit2" >> $GITHUB_OUTPUT
+            echo "devel_binary=bin/monokit2-devel" >> $GITHUB_OUTPUT
+
+          elif [[ "$TAG_NAME" == *-v* ]]; then
+            # Plugin release (dynamic plugin name)
+            PLUGIN_NAME=${TAG_NAME%%-*}
+            go build -tags $PLUGIN_NAME -o ./bin/$PLUGIN_NAME ./main.go
+            go build -tags $PLUGIN_NAME -o ./bin/$PLUGIN_NAME-devel ./main.go
+            echo "binary=bin/$PLUGIN_NAME" >> $GITHUB_OUTPUT
+            echo "devel_binary=bin/$PLUGIN_NAME-devel" >> $GITHUB_OUTPUT
+
+          else
+            # Always build the main devel binary
+            go build -o ./bin/monokit2-devel ./main.go
+            echo "devel_binary_monokit2=bin/monokit2-devel" >> $GITHUB_OUTPUT
+
+            ACTIVE_PLUGINS=(osHealth diskSaver)
+            # Build devel binaries for active plugins
+            for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
+              cd plugins/$PLUGIN_NAME || exit 1
+              go build -tags "$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}-devel ./main.go
+              echo "devel_binary_${PLUGIN_NAME}=bin/${PLUGIN_NAME}-devel" >> $GITHUB_OUTPUT
+              cd ../..
+            done
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-binaries
+          path: |
+            ${{ steps.build.outputs.binary }}
+            ${{ steps.build.outputs.devel_binary }}
+            ${{ join(' ', steps.build.outputs.*devel_binary_*) }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
+      - name: Create normal release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release binary
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.build.outputs.binary }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete existing devel prerelease (if exists)
+        run: |
+          set -e
+          DEVEL_TAG="${GITHUB_REF_NAME}-devel"
+          if gh release view "$DEVEL_TAG" &>/dev/null; then
+            echo "Deleting existing devel release: $DEVEL_TAG"
+            gh release delete "$DEVEL_TAG" --yes
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create devel prerelease
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "${{ github.ref_name }}-devel"
+          name: Devel Release ${{ github.ref_name }}
+          prerelease: true
+          files: ${{ join(' ', steps.build.outputs.*devel_binary_*) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
