@@ -15,8 +15,8 @@ var (
 	queueMutex      sync.Mutex
 )
 
-// This function actually queues the messages to be sent for not overwhelm the Zulip server when there are many alerts at the same time.
-func SendZulipAlarm(message string, service *string) bool {
+// Removed queueing because it was causing more problems than it was solving
+func SendZulipAlarm(message string, service *string) error {
 	var lastAlarm ZulipAlarm
 	var err error
 
@@ -43,79 +43,44 @@ func SendZulipAlarm(message string, service *string) bool {
 
 	if err != nil {
 		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
-		return false
+		return err
 	}
 
 	if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
+		var message string
 		if service != nil {
-			Logger.Info().Str("service", *service).Msgf("Enough time is not passed since the last alarm from %s, skipping this one", *service)
+			message = fmt.Sprintf("Enough time is not passed since the last alarm from %s, skipping this one", *service)
+			Logger.Info().Str("service", *service).Msg(message)
 		} else {
-			Logger.Info().Msgf("Enough time is not passed since the last alarm, skipping this one")
+			message = "Enough time is not passed since the last alarm, skipping this one"
+			Logger.Info().Msg(message)
 		}
-		return false
+		return fmt.Errorf(message)
 	}
 
-	queueMutex.Lock()
-	zulipAlarmQueue = append(zulipAlarmQueue, message)
-	queueMutex.Unlock()
-
-	return true
-}
-
-func StartZulipAlarmWorker() {
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			processQueue()
-		}
-	}()
-}
-
-func processQueue() {
-	interval := 3 * time.Second
-
-	queueMutex.Lock()
-	defer queueMutex.Unlock()
-
-	if len(zulipAlarmQueue) == 0 {
-		return
-	}
-
-	newQueue := make([]string, 0, len(zulipAlarmQueue)) // to keep failed messages
-
-	for _, msg := range zulipAlarmQueue {
-		if err := sendZulipAlarm(msg); err != nil {
-			newQueue = append(newQueue, msg)
-		}
-
-		time.Sleep(interval)
-	}
-
-	zulipAlarmQueue = newQueue
+	return sendZulipAlarm(message)
 }
 
 func sendZulipAlarm(message string) error {
 
 	if !GlobalConfig.ZulipAlarm.Enabled {
 		Logger.Warn().Msg("Zulip alarm is bot enabled in the configuration")
-		return nil
+		return fmt.Errorf("zulip alarm not enabled")
 	}
 
 	if GlobalConfig.ZulipAlarm.BotApi.Enabled {
 		err := sendZulipBotApiAlarm(message)
 		if err != nil {
 			Logger.Error().Err(err).Msgf("failed to send Zulip Bot API alarm")
+			return err
 		}
 	} else {
 		for _, url := range GlobalConfig.ZulipAlarm.WebhookUrls {
 			err := sendZulipWebhookAlarm(url, message)
 			if err != nil {
 				Logger.Error().Err(err).Msgf("Failed to send Zulip webhook alarm to %s", url)
-				continue
+				return err
 			}
-			DB.Create(&ZulipAlarm{ProjectIdentifier: GlobalConfig.ProjectIdentifier, Hostname: GlobalConfig.Hostname, Content: message})
 		}
 	}
 
@@ -142,11 +107,13 @@ func sendZulipWebhookAlarm(url string, message string) error {
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		Logger.Error().Err(err).Msg("failed to send request")
+		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		Logger.Error().Err(err).Msgf("Received non-2xx response: %d", resp.StatusCode)
+		Logger.Error().Msgf("Received non-2xx response: %d", resp.StatusCode)
+		return fmt.Errorf("zulip webhook returned status %d", resp.StatusCode)
 	}
 
 	return nil

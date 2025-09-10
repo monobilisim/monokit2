@@ -110,8 +110,8 @@ func main() {
 
 	logger.Info().Msg("Logger initialized successfully")
 
-	logger.Info().Msg("Starting the Zulip alarm worker...")
-	lib.StartZulipAlarmWorker()
+	// logger.Info().Msg("Starting the Zulip alarm worker...")
+	// lib.StartZulipAlarmWorker()
 
 	err = os.MkdirAll(lib.PluginsDir, 0755)
 	if err != nil {

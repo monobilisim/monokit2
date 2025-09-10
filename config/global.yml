@@ -9,6 +9,8 @@ zulip-alarm:
   enabled: true
   # if any message send to zulip, it'll wait interval * 60 seconds to send or update another message
   interval: 3
+  # how many times same alert can be sent back to back
+  limit: 10
   webhook-urls:
     - example.com
     - example2.com

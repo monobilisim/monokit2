@@ -105,9 +105,8 @@ func main() {
 				}
 			}
 
-			didAlarmSend := lib.SendZulipAlarm(alarmMessage, &pluginName)
-
-			if didAlarmSend {
+			err := lib.SendZulipAlarm(alarmMessage, &pluginName)
+			if err == nil {
 				lib.DB.Create(&lib.ZulipAlarm{
 					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 					Hostname:          lib.GlobalConfig.Hostname,
@@ -136,9 +135,8 @@ func main() {
 			if lastAlarm.Status == "down" {
 				alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - System load is back to normal"
 
-				didAlarmSend := lib.SendZulipAlarm(alarmMessage, &pluginName)
-
-				if didAlarmSend {
+				err := lib.SendZulipAlarm(alarmMessage, &pluginName)
+				if err == nil {
 					lib.DB.Create(&lib.ZulipAlarm{
 						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 						Hostname:          lib.GlobalConfig.Hostname,
