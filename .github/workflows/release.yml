@@ -40,13 +40,13 @@ jobs:
 
           else
             # Always build the main devel binary
-            go build -o ./bin/monokit2-devel ./main.go
+            go build -o ./bin/monokit2 ./main.go
 
             ACTIVE_PLUGINS=(osHealth)
             # Build devel binaries for active plugins
             for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
               cd plugins/$PLUGIN_NAME || exit 1
-              go build --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}-devel
+              go build --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}
               cd ../..
             done
           fi
