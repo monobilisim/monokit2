@@ -15,6 +15,8 @@ import (
 )
 
 var pluginName string = "osHealth"
+var up string = "up"
+var down string = "down"
 
 func main() {
 	lib.InitConfig()
@@ -25,11 +27,6 @@ func main() {
 	}
 
 	lib.InitializeDatabase()
-
-	// err = os.MkdirAll(lib.LogDir+"/osHealth", os.ModePerm)
-	// if err != nil {
-	// 	logger.Fatal().Err(err).Msg("Failed to create osHealth log directory")
-	// }
 
 	logger.Info().Msg("Starting OS Health monitoring plugin...")
 
@@ -105,7 +102,7 @@ func main() {
 				}
 			}
 
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName)
+			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &down)
 			if err == nil {
 				lib.DB.Create(&lib.ZulipAlarm{
 					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
@@ -135,7 +132,7 @@ func main() {
 			if lastAlarm.Status == "down" {
 				alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - System load is back to normal"
 
-				err := lib.SendZulipAlarm(alarmMessage, &pluginName)
+				err := lib.SendZulipAlarm(alarmMessage, &pluginName, &up)
 				if err == nil {
 					lib.DB.Create(&lib.ZulipAlarm{
 						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,

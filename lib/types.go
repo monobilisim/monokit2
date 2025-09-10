@@ -13,6 +13,7 @@ type GlobalConfigType struct {
 		Enabled     bool     `yaml:"enabled"`
 		Interval    int      `yaml:"interval"`
 		WebhookUrls []string `yaml:"webhook-urls"`
+		Limit       int      `yaml:"limit"`
 
 		BotApi struct {
 			Enabled    bool     `yaml:"enabled"`

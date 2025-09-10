@@ -16,8 +16,9 @@ var (
 )
 
 // Removed queueing because it was causing more problems than it was solving
-func SendZulipAlarm(message string, service *string) error {
+func SendZulipAlarm(message string, service *string, status *string) error {
 	var lastAlarm ZulipAlarm
+	var lastAlarms []ZulipAlarm
 	var err error
 
 	if service != nil {
@@ -29,6 +30,15 @@ func SendZulipAlarm(message string, service *string) error {
 			Order("id DESC").
 			Limit(1).
 			Find(&lastAlarm).Error
+
+		err = DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname,
+				service).
+			Order("id DESC").
+			Limit(GlobalConfig.ZulipAlarm.Limit).
+			Find(&lastAlarms).Error
 	}
 
 	if service == nil {
@@ -39,11 +49,41 @@ func SendZulipAlarm(message string, service *string) error {
 			Order("id DESC").
 			Limit(1).
 			Find(&lastAlarm).Error
+
+		err = DB.
+			Where("project_identifier = ? AND hostname = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname).
+			Order("id DESC").
+			Limit(GlobalConfig.ZulipAlarm.Limit).
+			Find(&lastAlarms).Error
 	}
 
 	if err != nil {
 		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
 		return err
+	}
+
+	// checking if alarms are duplicate
+	firstStatus := lastAlarms[0].Status
+	allSame := true
+	for _, alarm := range lastAlarms {
+		if alarm.Status != firstStatus {
+			allSame = false
+			break
+		}
+	}
+
+	if status != nil && allSame && firstStatus == *status {
+		var message string
+		if service != nil {
+			message = fmt.Sprintf("Zulip alarm limit (%s) has reached to limit for %s, skipping this one", GlobalConfig.ZulipAlarm.Limit, *service)
+			Logger.Info().Str("service", *service).Msg(message)
+		} else {
+			message = fmt.Sprintf("Zulip alarm limit (%s) has reached to limit, skipping this one", GlobalConfig.ZulipAlarm.Limit)
+			Logger.Info().Msg(message)
+		}
+		return fmt.Errorf(message)
 	}
 
 	if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
