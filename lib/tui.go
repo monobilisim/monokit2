@@ -1,18 +1,21 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Release represents a GitHub release
@@ -28,33 +31,279 @@ type Asset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-// TUIModel represents the main TUI model for plugin selection
-type TUIModel struct {
-	choices  []string
-	cursor   int
-	selected string
-	version  string
+// PluginInfo represents a plugin with version information
+type PluginInfo struct {
+	Name             string
+	InstalledVersion string
+	AvailableVersion string
+	HasUpdate        bool
 }
 
+// UIState represents the current state of the UI
+type UIState int
+
+const (
+	MainMenu UIState = iota
+	PluginSelection
+	Installing
+)
+
+// ProgressMsg represents a progress update message
+type ProgressMsg struct {
+	Downloaded int64
+	Total      int64
+	Done       bool
+	Error      error
+}
+
+// TUIModel represents the main TUI model for plugin selection
+type TUIModel struct {
+	choices         []string
+	pluginInfos     []PluginInfo
+	cursor          int
+	selected        string
+	version         string
+	state           UIState
+	progress        float64
+	downloadingName string
+	err             error
+	width           int
+	height          int
+}
+
+// Styles for the UI
+var (
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FAFAFA")).
+			Background(lipgloss.Color("#7D56F4")).
+			Padding(0, 1).
+			Bold(true)
+
+	selectedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#7D56F4")).
+			Bold(true)
+
+	normalStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF"))
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Bold(true)
+
+	progressBarStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#7D56F4")).
+				Padding(0, 1)
+
+	versionStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888")).
+			Italic(true)
+
+	updateAvailableStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FF00")).
+				Bold(true)
+)
+
+// NewTUIModel creates a new TUI model with the current version
 func NewTUIModel(version string) TUIModel {
+	model := TUIModel{
+		version: version,
+		state:   MainMenu,
+	}
+	model.refreshPluginList()
+	return model
+}
+
+// refreshPluginList reads the plugin directory and checks versions
+func (m *TUIModel) refreshPluginList() {
 	files, err := ioutil.ReadDir(PluginsDir)
 	if err != nil {
-		log.Fatal(err)
+		m.err = err
+		return
 	}
 
 	var choices []string
+	var pluginInfos []PluginInfo
+
 	choices = append(choices, "Install a plugin")
+
+	// Fetch available versions from GitHub
+	availableVersions := m.fetchAvailableVersions()
 
 	for _, f := range files {
 		if f.Mode()&0111 != 0 { // check if executable
-			choices = append(choices, f.Name())
+			pluginName := f.Name()
+			choices = append(choices, pluginName)
+
+			// Get plugin version
+			installedVersion := m.getPluginVersion(pluginName)
+			availableVersion := availableVersions[pluginName]
+
+			hasUpdate := false
+			// Only show update if plugin exists in remote release AND versions differ
+			if availableVersion != "" && installedVersion != "unknown" {
+				// Double-check that plugin is actually available for download
+				if m.isPluginAvailableInRelease(pluginName) {
+					// Normalize versions for comparison
+					normalizedInstalled := normalizeVersion(installedVersion)
+					normalizedAvailable := normalizeVersion(availableVersion)
+					if normalizedInstalled != normalizedAvailable {
+						hasUpdate = true
+					}
+				}
+			}
+
+			pluginInfo := PluginInfo{
+				Name:             pluginName,
+				InstalledVersion: installedVersion,
+				AvailableVersion: availableVersion,
+				HasUpdate:        hasUpdate,
+			}
+			pluginInfos = append(pluginInfos, pluginInfo)
 		}
 	}
 
-	return TUIModel{
-		choices: choices,
-		version: version,
+	m.choices = choices
+	m.pluginInfos = pluginInfos
+}
+
+// getPluginVersion gets the version of an installed plugin
+func (m *TUIModel) getPluginVersion(pluginName string) string {
+	pluginPath := filepath.Join(PluginsDir, pluginName)
+	cmd := exec.Command(pluginPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "unknown"
 	}
+
+	version := strings.TrimSpace(string(output))
+
+	// If it's a development version, show first 5 characters of hash
+	if strings.Contains(version, "devel") || len(version) > 10 {
+		if match := regexp.MustCompile(`[a-f0-9]{5,}`).FindString(version); match != "" {
+			return "devel-" + match[:5]
+		}
+		return "devel"
+	}
+
+	return version
+}
+
+// normalizeVersion normalizes version strings for comparison
+func normalizeVersion(version string) string {
+	// Remove whitespace
+	version = strings.TrimSpace(version)
+
+	// Remove 'v' prefix if present
+	if strings.HasPrefix(version, "v") {
+		version = version[1:]
+	}
+
+	// Handle devel versions - extract just the hash part
+	if strings.HasPrefix(version, "devel-") {
+		return version // Keep as is for devel versions
+	}
+
+	// Handle case where version might have extra characters
+	version = strings.Split(version, " ")[0] // Take only first part before space
+
+	// For regular versions, just return as is after removing 'v'
+	return version
+}
+
+// isPluginAvailableInRelease checks if a plugin is actually available for download
+func (m *TUIModel) isPluginAvailableInRelease(pluginName string) bool {
+	var url string
+	if m.version == "devel" {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/tags/devel"
+	} else {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/latest"
+	}
+
+	client := http.Client{
+		Timeout:   5 * time.Second,
+		Transport: http.DefaultTransport,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	var release Release
+	err = json.NewDecoder(resp.Body).Decode(&release)
+	if err != nil {
+		return false
+	}
+
+	// Check if plugin exists in assets
+	for _, asset := range release.Assets {
+		if asset.Name == pluginName {
+			return true
+		}
+	}
+
+	return false
+}
+
+// fetchAvailableVersions fetches available plugin versions from GitHub
+func (m *TUIModel) fetchAvailableVersions() map[string]string {
+	versions := make(map[string]string)
+
+	var url string
+	if m.version == "devel" {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/tags/devel"
+	} else {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/latest"
+	}
+
+	client := http.Client{
+		Timeout:   10 * time.Second,
+		Transport: http.DefaultTransport,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		// Silently fail - don't show errors for version checks
+		return versions
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return versions
+	}
+
+	var release Release
+	err = json.NewDecoder(resp.Body).Decode(&release)
+	if err != nil {
+		return versions
+	}
+
+	// Process the release version
+	releaseVersion := release.TagName
+	if m.version == "devel" {
+		// For devel versions, show first 5 chars of hash
+		if match := regexp.MustCompile(`[a-f0-9]{5,}`).FindString(releaseVersion); match != "" {
+			releaseVersion = "devel-" + match[:5]
+		} else {
+			releaseVersion = "devel"
+		}
+	}
+
+	// Map all available plugins to this version
+	// Only add plugins that actually exist in the release
+	for _, asset := range release.Assets {
+		if asset.Name != "monokit2" {
+			versions[asset.Name] = releaseVersion
+		}
+	}
+
+	return versions
 }
 
 // Init initializes the TUI model
@@ -65,57 +314,257 @@ func (m TUIModel) Init() tea.Cmd {
 // Update handles user input and updates the TUI model
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
+		switch m.state {
+		case MainMenu:
+			return m.handleMainMenuInput(msg)
+		case PluginSelection:
+			return m.handlePluginSelectionInput(msg)
+		case Installing:
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
 			}
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
+		}
+
+	case ProgressMsg:
+		if msg.Error != nil {
+			m.err = msg.Error
+			m.state = MainMenu
+			return m, nil
+		}
+
+		if msg.Done {
+			m.state = MainMenu
+			m.progress = 0
+			m.refreshPluginList()
+			return m, nil
+		}
+
+		if msg.Total > 0 {
+			m.progress = float64(msg.Downloaded) / float64(msg.Total)
+		}
+	}
+
+	return m, nil
+}
+
+// handleMainMenuInput handles input in the main menu
+func (m TUIModel) handleMainMenuInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.choices)-1 {
+			m.cursor++
+		}
+	case "enter", " ":
+		if m.cursor < len(m.choices) {
+			m.selected = m.choices[m.cursor]
+
+			if m.selected == "Install a plugin" {
+				return m.handlePluginInstallation()
 			}
-		case "enter", " ":
-			if m.cursor < len(m.choices) {
-				m.selected = m.choices[m.cursor]
 
-				if m.selected == "Install a plugin" {
-					return m.handlePluginInstallation()
-				}
-
-				if m.selected == "" {
-					return m, nil
-				}
-
+			if m.selected != "" {
 				return m.runPlugin()
+			}
+		}
+	case "r":
+		// Refresh plugin list
+		m.refreshPluginList()
+	}
+	return m, nil
+}
+
+// handlePluginSelectionInput handles input in the plugin selection menu
+func (m TUIModel) handlePluginSelectionInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q", "esc":
+		// Go back to main menu
+		m.state = MainMenu
+		m.cursor = 0
+		m.refreshPluginList()
+		return m, nil
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.choices)-1 {
+			m.cursor++
+		}
+	case "enter", " ":
+		if m.cursor < len(m.choices) {
+			m.selected = m.choices[m.cursor]
+
+			if m.selected == "Cancel" {
+				// Go back to main menu
+				m.state = MainMenu
+				m.cursor = 0
+				m.refreshPluginList()
+				return m, nil
+			}
+
+			if m.selected != "" {
+				return m.installSelectedPlugin()
 			}
 		}
 	}
 	return m, nil
 }
 
+// View renders the TUI
 func (m TUIModel) View() string {
-	s := "Select a plugin to run:\n\n"
-
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
+	switch m.state {
+	case MainMenu:
+		return m.renderMainMenu()
+	case PluginSelection:
+		return m.renderPluginSelection()
+	case Installing:
+		return m.renderInstallProgress()
 	}
-
-	s += "\nPress q to quit.\n"
-	s += "Use arrow keys or j/k to navigate, enter to select.\n"
-
-	return s
+	return ""
 }
 
+// renderMainMenu renders the main menu
+func (m TUIModel) renderMainMenu() string {
+	var s strings.Builder
+
+	// Title
+	s.WriteString(titleStyle.Render("🔧 Monokit2 Plugin Manager"))
+	s.WriteString("\n\n")
+
+	if m.err != nil {
+		s.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString("\n\n")
+	}
+
+	s.WriteString("Select a plugin to run:\n\n")
+
+	for i, choice := range m.choices {
+		cursor := "  "
+		style := normalStyle
+
+		if m.cursor == i {
+			cursor = "> "
+			style = selectedStyle
+		}
+
+		if choice == "Install a plugin" {
+			s.WriteString(fmt.Sprintf("%s%s\n", cursor, style.Render(choice)))
+		} else {
+			// Find plugin info
+			var pluginInfo *PluginInfo
+			for j := range m.pluginInfos {
+				if m.pluginInfos[j].Name == choice {
+					pluginInfo = &m.pluginInfos[j]
+					break
+				}
+			}
+
+			versionText := ""
+			if pluginInfo != nil && pluginInfo.InstalledVersion != "unknown" {
+				displayVersion := pluginInfo.InstalledVersion
+				if !strings.HasPrefix(displayVersion, "v") && !strings.HasPrefix(displayVersion, "devel") {
+					displayVersion = "v" + displayVersion
+				}
+				versionText = versionStyle.Render(fmt.Sprintf(" (%s)", displayVersion))
+				if pluginInfo.HasUpdate && pluginInfo.AvailableVersion != "" {
+					versionText += updateAvailableStyle.Render(" [update available]")
+				}
+			}
+
+			s.WriteString(fmt.Sprintf("%s%s%s\n", cursor, style.Render(choice), versionText))
+		}
+	}
+
+	s.WriteString("\n")
+	s.WriteString("Press q to quit, r to refresh, enter to select.\n")
+	s.WriteString("Use arrow keys or j/k to navigate.\n")
+
+	return s.String()
+}
+
+// renderPluginSelection renders the plugin selection menu
+func (m TUIModel) renderPluginSelection() string {
+	var s strings.Builder
+
+	s.WriteString(titleStyle.Render("📦 Available Plugins"))
+	s.WriteString("\n\n")
+
+	if m.err != nil {
+		s.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString("\n\n")
+	}
+
+	s.WriteString("Select a plugin to install:\n\n")
+
+	for i, choice := range m.choices {
+		cursor := "  "
+		style := normalStyle
+
+		if m.cursor == i {
+			cursor = "> "
+			style = selectedStyle
+		}
+
+		s.WriteString(fmt.Sprintf("%s%s\n", cursor, style.Render(choice)))
+	}
+
+	s.WriteString("\n")
+	s.WriteString("Press esc to go back, enter to select.\n")
+	s.WriteString("Use arrow keys or j/k to navigate.\n")
+
+	return s.String()
+}
+
+// renderInstallProgress renders the installation progress
+func (m TUIModel) renderInstallProgress() string {
+	var s strings.Builder
+
+	s.WriteString(titleStyle.Render("⬇️  Installing Plugin"))
+	s.WriteString("\n\n")
+
+	s.WriteString(fmt.Sprintf("Installing: %s\n\n", m.downloadingName))
+
+	// Progress bar
+	progressWidth := 50
+	if m.width > 0 && m.width-20 < progressWidth {
+		progressWidth = m.width - 20
+	}
+
+	filled := int(m.progress * float64(progressWidth))
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", progressWidth-filled)
+
+	progressText := fmt.Sprintf("Progress: %.1f%%", m.progress*100)
+
+	s.WriteString(progressBarStyle.Render(bar))
+	s.WriteString("\n")
+	s.WriteString(progressText)
+	s.WriteString("\n\n")
+
+	if m.err != nil {
+		s.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		s.WriteString("\n")
+	}
+
+	s.WriteString("Press Ctrl+C to cancel.\n")
+
+	return s.String()
+}
+
+// handlePluginInstallation manages the plugin installation process
 func (m TUIModel) handlePluginInstallation() (tea.Model, tea.Cmd) {
 	var url string
-	if m.version == "DEVEL" {
+	if m.version == "devel" {
 		url = "https://api.github.com/repos/monobilisim/monokit2/releases/tags/devel"
 	} else {
 		url = "https://api.github.com/repos/monobilisim/monokit2/releases/latest"
@@ -128,24 +577,22 @@ func (m TUIModel) handlePluginInstallation() (tea.Model, tea.Cmd) {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		fmt.Printf("Error fetching release info: %v", err)
+		m.err = fmt.Errorf("error fetching release info: %v", err)
 		return m, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Unexpected status code: %d", resp.StatusCode)
+		m.err = fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 		return m, nil
 	}
 
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		fmt.Printf("Error decoding release JSON: %v", err)
+		m.err = fmt.Errorf("error decoding release JSON: %v", err)
 		return m, nil
 	}
-
-	fmt.Println(release)
 
 	var pluginAssets []Asset
 	for _, asset := range release.Assets {
@@ -154,52 +601,177 @@ func (m TUIModel) handlePluginInstallation() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	for _, asset := range pluginAssets {
-		fmt.Printf(asset.Name)
-	}
-
 	var choices []string
 	choices = append(choices, "Cancel")
 
 	for _, asset := range pluginAssets {
-		choices = append(choices, asset.Name)
+		// Check if plugin is already installed and add version info
+		installedVersion := m.getPluginVersion(asset.Name)
+		versionText := ""
+		if installedVersion != "unknown" {
+			availableVersion := release.TagName
+			if m.version == "devel" {
+				// For devel versions, show first 5 chars of hash
+				if match := regexp.MustCompile(`[a-f0-9]{5,}`).FindString(availableVersion); match != "" {
+					availableVersion = "devel-" + match[:5]
+				} else {
+					availableVersion = "devel"
+				}
+			}
+
+			normalizedInstalled := normalizeVersion(installedVersion)
+			normalizedAvailable := normalizeVersion(availableVersion)
+
+			if normalizedInstalled != normalizedAvailable {
+				versionText = fmt.Sprintf(" (installed: %s → available: %s)", installedVersion, availableVersion)
+			} else {
+				versionText = fmt.Sprintf(" (current: %s)", installedVersion)
+			}
+		}
+
+		choices = append(choices, asset.Name+versionText)
 	}
 
-	p := tea.NewProgram(TUIModel{choices: choices, version: m.version})
-	m2, err := p.StartReturningModel()
+	// Switch to plugin selection state
+	m.state = PluginSelection
+	m.choices = choices
+	m.cursor = 0
+	m.err = nil
+
+	return m, nil
+}
+
+// installSelectedPlugin installs the selected plugin with progress tracking
+func (m TUIModel) installSelectedPlugin() (tea.Model, tea.Cmd) {
+	// Extract plugin name (remove version info)
+	pluginName := strings.Split(m.selected, " (")[0]
+
+	// Find the download URL
+	var url string
+	if m.version == "devel" {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/tags/devel"
+	} else {
+		url = "https://api.github.com/repos/monobilisim/monokit2/releases/latest"
+	}
+
+	client := http.Client{
+		Timeout:   30 * time.Second,
+		Transport: http.DefaultTransport,
+	}
+
+	resp, err := client.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		m.err = fmt.Errorf("error fetching release info: %v", err)
+		return m, nil
 	}
+	defer resp.Body.Close()
 
-	m3 := m2.(TUIModel)
-
-	if m3.selected == "Cancel" || m3.selected == "" {
+	var release Release
+	err = json.NewDecoder(resp.Body).Decode(&release)
+	if err != nil {
+		m.err = fmt.Errorf("error decoding release JSON: %v", err)
 		return m, nil
 	}
 
 	var downloadURL string
-	for _, asset := range pluginAssets {
-		if asset.Name == m3.selected {
+	for _, asset := range release.Assets {
+		if asset.Name == pluginName {
 			downloadURL = asset.BrowserDownloadURL
 			break
 		}
 	}
 
 	if downloadURL == "" {
-		fmt.Printf("Download URL not found for selected plugin")
+		m.err = fmt.Errorf("download URL not found for selected plugin")
 		return m, nil
 	}
 
-	err = downloadAndInstallPlugin(m3.selected, downloadURL, client)
-	if err != nil {
-		fmt.Printf("Error installing plugin: %v", err)
-		return m, nil
-	}
+	// Switch to installing state
+	m.state = Installing
+	m.downloadingName = pluginName
+	m.progress = 0
+	m.err = nil
 
-	fmt.Printf("Plugin %s installed successfully!\n", m3.selected)
-	return NewTUIModel(m.version), nil
+	return m, m.downloadWithProgress(pluginName, downloadURL)
 }
 
+// downloadWithProgress downloads a plugin with progress tracking
+func (m TUIModel) downloadWithProgress(pluginName, downloadURL string) tea.Cmd {
+	return func() tea.Msg {
+		client := http.Client{
+			Timeout:   5 * time.Minute,
+			Transport: http.DefaultTransport,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+		if err != nil {
+			return ProgressMsg{Error: fmt.Errorf("error creating request: %v", err)}
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return ProgressMsg{Error: fmt.Errorf("error downloading plugin: %v", err)}
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return ProgressMsg{Error: fmt.Errorf("unexpected status code: %d", resp.StatusCode)}
+		}
+
+		pluginPath := filepath.Join(PluginsDir, pluginName)
+		outFile, err := os.Create(pluginPath)
+		if err != nil {
+			return ProgressMsg{Error: fmt.Errorf("error creating plugin file: %v", err)}
+		}
+		defer outFile.Close()
+
+		// Create a progress reader
+		totalSize := resp.ContentLength
+		var downloaded int64
+
+		buffer := make([]byte, 32*1024) // 32KB buffer
+	downloadLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return ProgressMsg{Error: fmt.Errorf("download cancelled")}
+			default:
+				n, err := resp.Body.Read(buffer)
+				if n > 0 {
+					_, writeErr := outFile.Write(buffer[:n])
+					if writeErr != nil {
+						return ProgressMsg{Error: fmt.Errorf("error writing to file: %v", writeErr)}
+					}
+					downloaded += int64(n)
+				}
+
+				if err != nil {
+					if err == io.EOF {
+						break downloadLoop
+					}
+					return ProgressMsg{Error: fmt.Errorf("error reading response: %v", err)}
+				}
+			}
+		}
+
+		// Set executable permission
+		err = os.Chmod(pluginPath, 0755)
+		if err != nil {
+			return ProgressMsg{Error: fmt.Errorf("error setting executable permission: %v", err)}
+		}
+
+		return ProgressMsg{
+			Downloaded: downloaded,
+			Total:      totalSize,
+			Done:       true,
+		}
+	}
+}
+
+// runPlugin executes the selected plugin
 func (m TUIModel) runPlugin() (tea.Model, tea.Cmd) {
 	pluginPath := filepath.Join(PluginsDir, m.selected)
 	cmd := exec.Command(pluginPath)
@@ -208,50 +780,21 @@ func (m TUIModel) runPlugin() (tea.Model, tea.Cmd) {
 	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
-		log.Printf("Error running plugin %s: %v", m.selected, err)
+		m.err = fmt.Errorf("error running plugin %s: %v", m.selected, err)
+		return m, nil
 	}
 	return m, tea.Quit
 }
 
-func downloadAndInstallPlugin(pluginName, downloadURL string, client http.Client) error {
-	fmt.Printf("Downloading %s...\n", pluginName)
-
-	resp, err := client.Get(downloadURL)
-	if err != nil {
-		return fmt.Errorf("error downloading plugin: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code while downloading: %d", resp.StatusCode)
-	}
-
-	pluginPath := filepath.Join(PluginsDir, pluginName)
-	outFile, err := os.Create(pluginPath)
-	if err != nil {
-		return fmt.Errorf("error creating plugin file: %v", err)
-	}
-	defer outFile.Close()
-
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		return fmt.Errorf("error saving plugin file: %v", err)
-	}
-
-	err = os.Chmod(pluginPath, 0755)
-	if err != nil {
-		return fmt.Errorf("error setting executable permission: %v", err)
-	}
-
-	return nil
-}
-
+// RunTUI starts the TUI application
 func RunTUI(version string) error {
 	model := NewTUIModel(version)
-	p := tea.NewProgram(model)
-	return p.Start()
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
 }
 
+// RunPlugin executes a specific plugin by name with given arguments
 func RunPlugin(pluginName string, args []string) error {
 	pluginPath := filepath.Join(PluginsDir, pluginName)
 	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
