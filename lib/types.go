@@ -29,6 +29,7 @@ type GlobalConfigType struct {
 		ApiKey   string `yaml:"api-key"`
 		Url      string `yaml:"url"`
 		Interval int    `yaml:"interval"`
+		Limit    int    `yaml:"limit"`
 	} `yaml:"redmine"`
 }
 
@@ -81,9 +82,9 @@ type Issue struct {
 	PriorityId   int     `gorm:"int" json:"priority_id,omitempty"`
 	StatusId     int     `gorm:"int" json:"status_id,omitempty"`
 	AssignedToId string  `gorm:"text" json:"assigned_to_id"`
-	Status       string  `gorm:"text" json:"status"` // down or up
-	Service      *string `gorm:"text" json:"-"`      // plugin name
-	Module       *string `gorm:"text" json:"-"`      // plugin's module name
+	Status       *string `gorm:"text" json:"-"` // down or up
+	Service      *string `gorm:"text" json:"-"` // plugin name
+	Module       *string `gorm:"text" json:"-"` // plugin's module name
 }
 
 type RedmineIssue struct {

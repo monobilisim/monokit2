@@ -16,7 +16,9 @@ var (
 )
 
 // service = plugin name, module = specific module in the plugin, status = alarm status like "up" or "down"
+//
 // service, module name and status can be nil if not applicable
+//
 // instead of directly giving them as string, giving them as pointer to string
 func SendZulipAlarm(message string, service *string, module *string, status *string) error {
 	var lastAlarm ZulipAlarm
@@ -168,6 +170,11 @@ func sendZulipWebhookAlarm(url string, message string) error {
 	return nil
 }
 
+// issue.Service = plugin name, issue.Module = specific module in the plugin, issue.Status = alarm status like "up" or "down"
+//
+// service, module name and status can be nil if not applicable
+//
+// instead of directly giving them as string, giving them as pointer to string
 func CreateRedmineIssue(issue Issue) error {
 	if !GlobalConfig.Redmine.Enabled {
 		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
@@ -175,17 +182,29 @@ func CreateRedmineIssue(issue Issue) error {
 	}
 
 	var lastIssue Issue
+	var lastIssues []Issue
 	var err error
 
 	if issue.Service != nil {
 		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ?",
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
 				GlobalConfig.ProjectIdentifier,
 				GlobalConfig.Hostname,
-				issue.Service).
+				issue.Service,
+				issue.Module).
 			Order("id DESC").
 			Limit(1).
 			Find(&lastIssue).Error
+
+		err = DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname,
+				issue.Service,
+				issue.Module).
+			Order("id DESC").
+			Limit(GlobalConfig.Redmine.Limit).
+			Find(&lastIssues).Error
 	}
 
 	if issue.Service == nil {
@@ -196,10 +215,18 @@ func CreateRedmineIssue(issue Issue) error {
 			Order("id DESC").
 			Limit(1).
 			Find(&lastIssue).Error
+
+		err = DB.
+			Where("project_identifier = ? AND hostname = ?",
+				GlobalConfig.ProjectIdentifier,
+				GlobalConfig.Hostname).
+			Order("id DESC").
+			Limit(GlobalConfig.Redmine.Limit).
+			Find(&lastIssues).Error
 	}
 
 	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
+		Logger.Error().Err(err).Msg("Failed to get last issues from database")
 		return err
 	}
 
@@ -216,6 +243,32 @@ func CreateRedmineIssue(issue Issue) error {
 		return fmt.Errorf("redmine API key or URL not configured")
 	}
 
+	// no extra checks needed if there are no previous alarms
+	if len(lastIssues) > 0 {
+		// checking if alarms are duplicate
+		firstStatus := lastIssues[0].Status
+		allSame := true
+		for _, alarm := range lastIssues {
+			if alarm.Status != firstStatus {
+				allSame = false
+				break
+			}
+		}
+
+		if issue.Status != nil && allSame && firstStatus == issue.Status {
+			var message string
+			if issue.Service != nil {
+				message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.Redmine.Limit, *issue.Service)
+				Logger.Info().Str("service", *issue.Service).Msg(message)
+			} else {
+				message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit, skipping this one", GlobalConfig.Redmine.Limit)
+				Logger.Info().Msg(message)
+			}
+			return fmt.Errorf(message)
+		}
+	}
+
+	// find if there is an existing issue with the same subject in the last 6 hours
 	existingIssue := findRecentSimilarIssue(issue.Subject, 6)
 	if existingIssue != nil {
 		Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, reopening instead of creating new one")

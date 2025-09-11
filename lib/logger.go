@@ -11,6 +11,9 @@ var (
 	Logger zerolog.Logger
 )
 
+// default configured logger for the application
+//
+// logger, err := InitLogger() or lib.InitLogger()
 func InitLogger() (zerolog.Logger, error) {
 	var output *os.File
 	var err error
