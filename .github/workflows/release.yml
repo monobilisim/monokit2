@@ -30,23 +30,23 @@ jobs:
 
           if [[ "$TAG_NAME" == v* ]]; then
             # Main release
-            go build -o ./bin/monokit2 ./main.go
+            go build -ldflags "-X 'main.version=$TAG_NAME'" -o ./bin/monokit2 ./main.go
 
           elif [[ "$TAG_NAME" == *-v* ]]; then
             # Plugin release (dynamic plugin name)
             PLUGIN_NAME=${TAG_NAME%%-*}
             cd plugins/$PLUGIN_NAME
-            go build --tags=$PLUGIN_NAME -o ../bin/
+            go build -ldflags "-X 'main.version=$TAG_NAME'" --tags=$PLUGIN_NAME -o ../bin/
 
           else
             # Always build the main devel binary
-            go build -o ./bin/monokit2 ./main.go
+            go build -ldflags "-X 'main.version=DEVEL'" -o ./bin/monokit2 ./main.go
 
             ACTIVE_PLUGINS=(osHealth)
             # Build devel binaries for active plugins
             for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
               cd plugins/$PLUGIN_NAME || exit 1
-              go build --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}
+              go build -ldflags "-X 'main.version=DEVEL'" --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}
               cd ../..
             done
           fi
