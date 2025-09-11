@@ -3,14 +3,26 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	lib "github.com/monobilisim/monokit2/lib"
 )
 
+// comes from -ldflags "-X 'main.version=version'" flag in ci build
+var version string
 var pluginName string = "osHealth"
 var up string = "up"
 var down string = "down"
 
 func main() {
+	if len(os.Args) > 1 {
+		if os.Args[1] == "--version" || os.Args[1] == "-v" || os.Args[1] == "version" || os.Args[1] == "v" {
+			fmt.Printf(version)
+			return
+		}
+	}
+
 	lib.InitConfig()
 
 	logger, err := lib.InitLogger()
