@@ -24,8 +24,12 @@ func CheckSystemRAM(logger zerolog.Logger) {
 		return
 	}
 
-	if vm.UsedPercent >= float64(lib.OsHealthConfig.RamUsageAlarm.Limit) {
-		alarmMessage := fmt.Sprintf("[osHealth] - %s - RAM usage has been more than %d% (%.2f%) for last %d minutes", lib.GlobalConfig.Hostname, lib.OsHealthConfig.RamUsageAlarm.Limit, vm.UsedPercent, lib.GlobalConfig.ZulipAlarm.Interval)
+	// vm.UsedPercent  this does not work while actual usage is 13% it says 90% because of cached and buffered memory
+	actualUsedPercent := float64(vm.Total-vm.Available) / float64(vm.Total) * 100
+	logger.Debug().Msgf("RAM usage %.2f", actualUsedPercent)
+
+	if actualUsedPercent >= float64(lib.OsHealthConfig.RamUsageAlarm.Limit) {
+		alarmMessage := fmt.Sprintf("[osHealth] - %s - RAM usage has been more than %d%% (%.2f%%) for last %d minutes", lib.GlobalConfig.Hostname, lib.OsHealthConfig.RamUsageAlarm.Limit, actualUsedPercent, lib.GlobalConfig.ZulipAlarm.Interval)
 
 		if lib.OsHealthConfig.RamUsageAlarm.TopProcesses.Enabled {
 			processes, err := process.Processes()
