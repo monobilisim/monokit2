@@ -13,7 +13,8 @@ import (
 	"github.com/shirou/gopsutil/v4/disk"
 )
 
-var supportedFilesystems = []string{"ext4", "ext3", "ext2", "xfs", "btrfs", "zfs", "fat32", "vfat"}
+// removed "zfs" filesystem type because it is handled in zfs.go
+var supportedFilesystems = []string{"ext4", "ext3", "ext2", "xfs", "btrfs", "fat32", "vfat"}
 
 func CheckSystemDisk(logger zerolog.Logger) {
 	var moduleName string = "disk"

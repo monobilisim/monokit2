@@ -115,7 +115,7 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 		if capacity >= lib.OsHealthConfig.DiskUsageAlarm.Limit {
 			logger.Warn().Str("pool", poolName).Int("capacity", capacity).Msg("ZFS pool capacity exceeded limit")
 
-			alarmMessage := fmt.Sprintf("[osHealth] - %s - ZFS pool %s capacity: %s", lib.GlobalConfig.Hostname, poolName, health)
+			alarmMessage := fmt.Sprintf("[osHealth] - %s - ZFS pool %s capacity exceeded the limit %d%% (%s%%)", lib.GlobalConfig.Hostname, poolName, lib.OsHealthConfig.DiskUsageAlarm.Limit, capacityStr)
 
 			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
 			if err == nil {
