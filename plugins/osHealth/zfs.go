@@ -33,9 +33,16 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 	// pool2 DEGRADED 0%
 	lines := string(out)
 	for _, line := range strings.Split(lines, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
 		// monokit2-devel ONLINE 0% => []string{"monokit2-devel", "ONLINE", "0%"}
 		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
 
 		poolName := fields[0]
 		health := fields[1]
