@@ -25,11 +25,7 @@ func CheckSystemRAM(logger zerolog.Logger) {
 	}
 
 	if vm.UsedPercent >= float64(lib.OsHealthConfig.RamUsageAlarm.Limit) {
-		stringifiedLimit := fmt.Sprintf("%.2f", lib.OsHealthConfig.RamUsageAlarm.Limit)
-		stringifiedUsed := fmt.Sprintf("%.2f", vm.UsedPercent)
-		stringifiedInterval := fmt.Sprintf("%d", lib.GlobalConfig.ZulipAlarm.Interval)
-
-		alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - RAM usage has been more than " + stringifiedLimit + "% (" + stringifiedUsed + "%) for last " + stringifiedInterval + " minutes"
+		alarmMessage := fmt.Sprintf("[osHealth] - %s - RAM usage has been more than %d% (%.2f%) for last %d minutes", lib.GlobalConfig.Hostname, lib.OsHealthConfig.RamUsageAlarm.Limit, vm.UsedPercent, lib.GlobalConfig.ZulipAlarm.Interval)
 
 		if lib.OsHealthConfig.RamUsageAlarm.TopProcesses.Enabled {
 			processes, err := process.Processes()
@@ -106,7 +102,7 @@ func CheckSystemRAM(logger zerolog.Logger) {
 		}
 
 		if lastAlarm.Status == down {
-			alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - RAM usage is back to normal"
+			alarmMessage := fmt.Sprintf("[osHealth] - %s - RAM usage is back to normal", lib.GlobalConfig.Hostname)
 
 			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
 			if err == nil {
