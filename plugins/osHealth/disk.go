@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 
@@ -45,7 +46,7 @@ func CheckSystemDisk(logger zerolog.Logger) {
 
 		logger.Debug().
 			Str("mountpoint", partition.Mountpoint).
-			Float64("usage_percent", usage.UsedPercent).
+			Float64("usage_percent", math.Round(usage.UsedPercent)).
 			Msg("Disk usage information")
 
 		if usage.UsedPercent > float64(lib.OsHealthConfig.DiskUsageAlarm.Limit) {
