@@ -10,7 +10,7 @@ Do not import anything other than lib inside plugins.
 
 Zulip Alarm and Redmine Issue functions has limiting and interval checking in their own. You don't need to reimplement them just provide the necessary fields in your plugin configuration struct.
 
-Use zerolog for loggin inside plugins. [docs](https://github.com/rs/zerolog) Example:
+Use zerolog for logging inside plugins. [docs](https://github.com/rs/zerolog) Example:
 
 ```go
 
