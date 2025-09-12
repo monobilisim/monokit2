@@ -5,6 +5,7 @@ go 1.24.2
 replace github.com/monobilisim/monokit2 => ../../
 
 require (
+	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/monobilisim/monokit2 v0.0.0-00010101000000-000000000000
 	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil/v4 v4.25.8
@@ -21,6 +22,7 @@ require (
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect

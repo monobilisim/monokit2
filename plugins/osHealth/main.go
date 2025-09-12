@@ -36,20 +36,29 @@ func main() {
 
 	logger.Info().Msg("Starting OS Health monitoring plugin...")
 
+	// checks system load
 	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {
 		CheckSystemLoad(logger)
 	}
 
+	// checks system RAM usage
 	if lib.OsHealthConfig.RamUsageAlarm.Enabled {
 		CheckSystemRAM(logger)
 	}
 
+	// checks system disk usage
 	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
 		CheckSystemDisk(logger)
 	}
 
+	// checks ZFS pool health and usage
 	if lib.OsHealthConfig.DiskUsageAlarm.Enabled && hasZFS() {
 		CheckSystemDiskZFS(logger)
+	}
+
+	// checks systemd services status
+	if hasSystemd() {
+		CheckSystemInit(logger)
 	}
 }
 
@@ -67,4 +76,13 @@ func hasZFS() bool {
 	}
 
 	return len(strings.TrimSpace(string(output))) > 0
+}
+
+// checks if systemd is available
+func hasSystemd() bool {
+	_, err := exec.LookPath("systemctl")
+	if err != nil {
+		return false
+	}
+	return true
 }
