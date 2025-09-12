@@ -8,19 +8,14 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/dbus"
+	"github.com/monobilisim/monokit2/lib"
 	"github.com/rs/zerolog"
 )
 
-type SystemdUnits struct {
-	Name        string
-	LoadState   string
-	ActiveState string
-	SubState    string
-	Uptime      string
-	Description string
-}
+type SystemdUnits = lib.SystemdUnits
 
 func CheckSystemInit(logger zerolog.Logger) {
+	var moduleName string = "systemd"
 
 	logger.Info().Msg("systemctl command found, checking services...")
 
@@ -31,9 +26,132 @@ func CheckSystemInit(logger zerolog.Logger) {
 	}
 
 	for _, service := range services {
-		fmt.Println(service)
-	}
 
+		var existingService SystemdUnits
+		err := lib.DB.Model(&SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&existingService).Error
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to check if service exists in database")
+		}
+
+		if existingService.Name != service.Name {
+			err := lib.DB.Create(&SystemdUnits{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Name:              service.Name,
+				LoadState:         service.LoadState,
+				ActiveState:       service.ActiveState,
+				SubState:          service.SubState,
+				Description:       service.Description,
+				Uptime:            service.Uptime,
+			}).Error
+
+			if err != nil {
+				logger.Error().Err(err).Msgf("Failed to insert %s into database", service.Name)
+			}
+			continue
+		}
+
+		var savedService SystemdUnits
+
+		err = lib.DB.Model(&SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&savedService).Error
+		if err != nil {
+			logger.Error().Err(err).Msgf("Failed to get current service %s from database", service.Name)
+			continue
+		}
+
+		// if service started in last 20 seconds that means it has restarted
+		if savedService.Uptime > service.Uptime && service.Uptime > 0 && savedService.Uptime-service.Uptime < 20 {
+			logger.Debug().Msgf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
+			alarmMessage := fmt.Sprintf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
+
+			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
+			if err == nil {
+				lib.DB.Create(&lib.ZulipAlarm{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Content:           alarmMessage,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            up,
+				})
+			}
+
+			if err == nil {
+				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+
+				if err != nil {
+					logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
+				}
+			}
+		}
+
+		if service.ActiveState != "active" && savedService.ActiveState == "active" {
+			logger.Debug().Msgf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
+			alarmMessage := fmt.Sprintf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
+
+			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
+			if err == nil {
+				lib.DB.Create(&lib.ZulipAlarm{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Content:           alarmMessage,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            down,
+				})
+
+				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+
+				if err != nil {
+					logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
+				}
+			}
+		}
+
+		if service.ActiveState == "active" && savedService.ActiveState != "active" {
+
+			logger.Debug().Msgf("Service %s is active again. Current state: %s", service.Name, service.ActiveState)
+			var lastAlarm lib.ZulipAlarm
+
+			err := lib.DB.
+				Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+					lib.GlobalConfig.ProjectIdentifier,
+					lib.GlobalConfig.Hostname,
+					pluginName,
+					moduleName).
+				Order("id DESC").
+				Limit(1).
+				Find(&lastAlarm).Error
+
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed to get last alarm from database")
+				return
+			}
+
+			if lastAlarm.Status == down {
+				alarmMessage := fmt.Sprintf("[osHealth] - %s - Service %s is now active", lib.GlobalConfig.Hostname, service.Name)
+
+				err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
+				if err == nil {
+					lib.DB.Create(&lib.ZulipAlarm{
+						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+						Hostname:          lib.GlobalConfig.Hostname,
+						Content:           alarmMessage,
+						Service:           pluginName,
+						Module:            moduleName,
+						Status:            up,
+					})
+
+					err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+
+					if err != nil {
+						logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
+					}
+				}
+			}
+		}
+
+	}
 }
 
 func GetServiceStatus() ([]SystemdUnits, error) {
@@ -71,7 +189,7 @@ func GetServiceStatus() ([]SystemdUnits, error) {
 		// Only calculate uptime if the service is active
 		if ts, ok := props["ActiveEnterTimestamp"].(uint64); ok && unit.ActiveState == "active" && ts > 0 {
 			startTime := time.Unix(0, int64(ts)*1000)
-			status.Uptime = time.Since(startTime).Truncate(time.Second).String()
+			status.Uptime = int64(time.Since(startTime).Seconds())
 		}
 
 		statuses = append(statuses, status)

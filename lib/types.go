@@ -63,8 +63,8 @@ type OsHealthConfigType struct {
 type ZulipAlarm struct {
 	gorm.Model
 	Id                uint   `gorm:"primaryKey"`
-	ProjectIdentifier string `gorm:"text"`
-	Hostname          string `gorm:"text"`
+	ProjectIdentifier string `gorm:"text"` // internal use
+	Hostname          string `gorm:"text"` // internal use
 	Content           string `gorm:"text"`
 	Status            string `gorm:"text"` // down or up
 	Service           string `gorm:"text"` // plugin name
@@ -73,20 +73,35 @@ type ZulipAlarm struct {
 
 type Issue struct {
 	gorm.Model
-	Id           int     `gorm:"int" json:"id,omitempty"`
-	Notes        string  `gorm:"text" json:"notes,omitempty"`
-	ProjectId    string  `gorm:"text" json:"project_id,omitempty"`
-	TrackerId    int     `gorm:"int" json:"tracker_id,omitempty"`
-	Description  string  `gorm:"text" json:"description,omitempty"`
-	Subject      string  `gorm:"text" json:"subject,omitempty"`
-	PriorityId   int     `gorm:"int" json:"priority_id,omitempty"`
-	StatusId     int     `gorm:"int" json:"status_id,omitempty"`
-	AssignedToId string  `gorm:"text" json:"assigned_to_id"`
-	Status       *string `gorm:"text" json:"-"` // down or up
-	Service      *string `gorm:"text" json:"-"` // plugin name
-	Module       *string `gorm:"text" json:"-"` // plugin's module name
+	Id                int     `gorm:"int" json:"id,omitempty"`
+	Notes             string  `gorm:"text" json:"notes,omitempty"`
+	ProjectId         string  `gorm:"text" json:"project_id,omitempty"`
+	TrackerId         int     `gorm:"int" json:"tracker_id,omitempty"`
+	Description       string  `gorm:"text" json:"description,omitempty"`
+	Subject           string  `gorm:"text" json:"subject,omitempty"`
+	PriorityId        int     `gorm:"int" json:"priority_id,omitempty"`
+	StatusId          int     `gorm:"int" json:"status_id,omitempty"`
+	AssignedToId      string  `gorm:"text" json:"assigned_to_id"`
+	ProjectIdentifier string  `gorm:"text"`          // internal use
+	Hostname          string  `gorm:"text"`          // internal use
+	Status            *string `gorm:"text" json:"-"` // down or up
+	Service           *string `gorm:"text" json:"-"` // plugin name
+	Module            *string `gorm:"text" json:"-"` // plugin's module name
 }
 
 type RedmineIssue struct {
 	Issue Issue `json:"issue"`
+}
+
+type SystemdUnits struct {
+	gorm.Model
+	id                uint   `gorm:"primaryKey"`
+	ProjectIdentifier string `gorm:"text"` // internal use
+	Hostname          string `gorm:"text"` // internal use
+	Name              string `gorm:"text,unique"`
+	LoadState         string `gorm:"text"`
+	ActiveState       string `gorm:"text"`
+	SubState          string `gorm:"text"`
+	Uptime            int64  `gorm:"int"`
+	Description       string `gorm:"text"`
 }

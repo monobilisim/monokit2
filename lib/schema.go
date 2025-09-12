@@ -26,6 +26,8 @@ func InitializeDatabase() error {
 
 	db.AutoMigrate(&Issue{})
 
+	db.AutoMigrate(&SystemdUnits{})
+
 	DB = db
 
 	return nil

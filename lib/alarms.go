@@ -85,13 +85,15 @@ func SendZulipAlarm(message string, service *string, module *string, status *str
 		}
 	}
 
-	if status != nil && allSame && firstStatus == *status {
+	// checks if last alarms have the same status as the new one and if the limit is reached
+	// if so, skip sending the alarm
+	if status != nil && allSame && firstStatus == *status && len(lastAlarms) >= GlobalConfig.ZulipAlarm.Limit {
 		var message string
 		if service != nil {
-			message = fmt.Sprintf("Zulip alarm limit (%s) has reached to limit for %s, skipping this one", GlobalConfig.ZulipAlarm.Limit, *service)
+			message = fmt.Sprintf("Zulip alarm limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.ZulipAlarm.Limit, *service)
 			Logger.Info().Str("service", *service).Msg(message)
 		} else {
-			message = fmt.Sprintf("Zulip alarm limit (%s) has reached to limit, skipping this one", GlobalConfig.ZulipAlarm.Limit)
+			message = fmt.Sprintf("Zulip alarm limit (%d) has reached to limit, skipping this one", GlobalConfig.ZulipAlarm.Limit)
 			Logger.Info().Msg(message)
 		}
 		return fmt.Errorf(message)
