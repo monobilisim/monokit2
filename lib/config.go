@@ -15,6 +15,13 @@ var GlobalConfig GlobalConfigType
 var OsHealthConfig OsHealthConfigType
 
 func InitConfig() error {
+	if _, err := os.Stat("/etc/mono"); os.IsNotExist(err) {
+		err := os.MkdirAll("/etc/mono", 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create /etc/mono directory: %w", err)
+		}
+	}
+
 	globalConfigExists := false
 	if _, err := os.Stat("/etc/mono/global.yml"); err == nil {
 		globalConfigExists = true
@@ -45,7 +52,7 @@ func InitConfig() error {
 	if _, err := os.Stat("/etc/mono/os.yml"); err == nil {
 		osHealthConfigExists = true
 	} else {
-		return fmt.Errorf("global configuration file does not exist")
+		return fmt.Errorf("os configuration file does not exist")
 	}
 
 	if osHealthConfigExists {

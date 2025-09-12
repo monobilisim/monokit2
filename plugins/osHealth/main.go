@@ -5,6 +5,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	lib "github.com/monobilisim/monokit2/lib"
 )
@@ -45,4 +47,24 @@ func main() {
 	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
 		CheckSystemDisk(logger)
 	}
+
+	if lib.OsHealthConfig.DiskUsageAlarm.Enabled && hasZFS() {
+		CheckSystemDiskZFS(logger)
+	}
+}
+
+// checks if there is an active ZFS pool
+func hasZFS() bool {
+	_, err := exec.LookPath("zpool")
+	if err != nil {
+		return false
+	}
+
+	cmd := exec.Command("zpool", "list", "-H")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	return len(strings.TrimSpace(string(output))) > 0
 }
