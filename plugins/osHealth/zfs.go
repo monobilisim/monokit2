@@ -104,6 +104,7 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 			Int("capacity_percent", capacity).
 			Msg("ZFS pool usage information")
 
+		moduleName := "zfsCapacity"
 		if capacity >= lib.OsHealthConfig.DiskUsageAlarm.Limit {
 			logger.Warn().Str("pool", poolName).Int("capacity", capacity).Msg("ZFS pool capacity exceeded limit")
 
