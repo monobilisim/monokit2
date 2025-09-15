@@ -108,10 +108,11 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			Hostname:          lib.GlobalConfig.Hostname,
 			Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
 			Description:       alarmMessage,
+			StatusId:          lib.IssueStatus.Feedback,
 			PriorityId:        lib.IssuePriority.Urgent,
-			Service:           &pluginName,
-			Module:            &moduleName,
-			Status:            &down,
+			Service:           pluginName,
+			Module:            moduleName,
+			Status:            down,
 		}
 
 		err = lib.CreateRedmineIssue(issue)
@@ -154,19 +155,24 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			return
 		}
 
+		lib.Logger.Debug().Msgf("Last issue: %v, %v, %v", lastIssue.Status, lastIssue.Service, lastIssue.Module)
+
 		alarmMessage := fmt.Sprintf("[osHealth] - %s - System load is back to normal", lib.GlobalConfig.Hostname)
 
-		if lastIssue.Status == &down {
+		if lastIssue.Status == down {
 			issue := lib.Issue{
 				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 				Hostname:          lib.GlobalConfig.Hostname,
 				Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
 				Notes:             fmt.Sprintf("Sistem yükü normale döndü (%.2f)", loadAverage.Load1),
 				PriorityId:        lib.IssuePriority.Urgent,
-				Service:           &pluginName,
-				Module:            &moduleName,
-				Status:            &up,
+				StatusId:          lib.IssueStatus.Closed,
+				Service:           pluginName,
+				Module:            moduleName,
+				Status:            up,
 			}
+
+			lib.Logger.Debug().Msgf("Creating Redmine issue: %+v", issue)
 
 			err = lib.CreateRedmineIssue(issue)
 			if err == nil {

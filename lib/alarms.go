@@ -189,11 +189,16 @@ func CreateRedmineIssue(issue Issue) error {
 		return nil
 	}
 
+	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
+		Logger.Error().Msg("Redmine API key or URL not configured")
+		return fmt.Errorf("Redmine API key or URL not configured")
+	}
+
 	var lastIssue Issue
 	var lastIssues []Issue
 	var err error
 
-	if issue.Service != nil {
+	if issue.Service != "" {
 		err = DB.
 			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
 				GlobalConfig.ProjectIdentifier,
@@ -215,7 +220,7 @@ func CreateRedmineIssue(issue Issue) error {
 			Find(&lastIssues).Error
 	}
 
-	if issue.Service == nil {
+	if issue.Service == "" {
 		err = DB.
 			Where("project_identifier = ? AND hostname = ?",
 				GlobalConfig.ProjectIdentifier,
@@ -238,49 +243,67 @@ func CreateRedmineIssue(issue Issue) error {
 		return err
 	}
 
-	if time.Since(lastIssue.CreatedAt) < time.Duration(GlobalConfig.Redmine.Interval)*time.Minute {
-		if issue.Service != nil {
-			Logger.Info().Str("service", *issue.Service).Msgf("Enough time is not passed since the last Issue from %s, skipping this one", *issue.Service)
+	// no extra checks needed if there are no previous issues
+	if len(lastIssues) == 0 {
+		Logger.Info().Str("subject", issue.Subject).Msg("Creating new Redmine issue")
+		return createNewRedmineIssue(issue)
+	}
+
+	// checking if issues are duplicate
+	firstStatus := lastIssues[0].Status
+	allSame := true
+	for _, alarm := range lastIssues {
+		if alarm.Status != firstStatus {
+			allSame = false
+			break
+		}
+	}
+
+	Logger.Debug().Bool("all_same", allSame).Str("first_status", fmt.Sprintf("%v", firstStatus)).Str("new_status", fmt.Sprintf("%v", issue.Status)).Int("last_issues_count", len(lastIssues)).Msg("Redmine issue duplication check")
+
+	// checks if last issues have the same status as the new one and if the limit is reached
+	// if so, skip sending the issue
+	if allSame && firstStatus == issue.Status && len(lastIssues) >= GlobalConfig.Redmine.Limit {
+		var message string
+		if issue.Service != "" {
+			message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.Redmine.Limit, issue.Service)
+			Logger.Info().Str("service", issue.Service).Msg(message)
 		} else {
-			Logger.Info().Msgf("Enough time is not passed since the last alarm, skipping this one")
+			message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit, skipping this one", GlobalConfig.Redmine.Limit)
+			Logger.Info().Msg(message)
+		}
+		return fmt.Errorf(message)
+	}
+
+	if time.Since(lastIssue.CreatedAt) < time.Duration(GlobalConfig.Redmine.Interval)*time.Minute {
+		var message string
+		if issue.Service != "" {
+			message = fmt.Sprintf("Enough time is not passed since the last Issue from %s, skipping this one", issue.Service)
+			Logger.Info().Str("service", issue.Service).Msg(message)
+		} else {
+			message = "Enough time is not passed since the last issue, skipping this one"
+			Logger.Info().Msg(message)
+		}
+		return fmt.Errorf(message)
+	}
+
+	// if the new issue has a different status than the last issue, update the status of the last issue
+	if lastIssue.Status != issue.Status {
+		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
+		if existingIssue != nil {
+			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, updating status instead of creating new one")
+			return updateRedmineIssueStatus(existingIssue.Id, issue)
 		}
 	}
 
-	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
-		Logger.Error().Msg("Redmine API key or URL not configured")
-		return fmt.Errorf("redmine API key or URL not configured")
-	}
-
-	// no extra checks needed if there are no previous alarms
-	if len(lastIssues) > 0 {
-		// checking if alarms are duplicate
-		firstStatus := lastIssues[0].Status
-		allSame := true
-		for _, alarm := range lastIssues {
-			if alarm.Status != firstStatus {
-				allSame = false
-				break
-			}
-		}
-
-		if issue.Status != nil && allSame && firstStatus == issue.Status {
-			var message string
-			if issue.Service != nil {
-				message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.Redmine.Limit, *issue.Service)
-				Logger.Info().Str("service", *issue.Service).Msg(message)
-			} else {
-				message = fmt.Sprintf("Redmine issue limit (%d) has reached to limit, skipping this one", GlobalConfig.Redmine.Limit)
-				Logger.Info().Msg(message)
-			}
-			return fmt.Errorf(message)
-		}
-	}
-
+	// if the new issue is "down" type and the last issue is "up" type too, then instead of creating a new issue, reopen the existing one
 	// find if there is an existing issue with the same subject in the last 6 hours
-	existingIssue := findRecentSimilarIssue(issue.Subject, 6)
-	if existingIssue != nil {
-		Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, reopening instead of creating new one")
-		return reopenRedmineIssue(existingIssue.Id)
+	if issue.Status == "down" && lastIssue.Status == "up" {
+		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
+		if existingIssue != nil {
+			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, reopening instead of creating new one")
+			return reopenRedmineIssue(existingIssue.Id)
+		}
 	}
 
 	Logger.Info().Str("subject", issue.Subject).Msg("Creating new Redmine issue")
@@ -306,10 +329,51 @@ func findRecentSimilarIssue(subject string, hoursBack int) *Issue {
 	return nil
 }
 
+func updateRedmineIssueStatus(issueId int, issue Issue) error {
+	updateData := map[string]interface{}{
+		"issue": map[string]interface{}{
+			"status_id": issue.StatusId,
+			"notes":     issue.Notes,
+		},
+	}
+
+	jsonBody, err := json.Marshal(updateData)
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to marshal issue update request")
+	}
+	updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
+	req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to create issue update request")
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+	req.Header.Set("User-Agent", "Monokit/devel")
+
+	client := &http.Client{Timeout: time.Second * 30}
+	resp, err := client.Do(req)
+	if err != nil {
+		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
+		return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
+	}
+
+	Logger.Info().Int("issue_id", issueId).Int("status_id", issue.StatusId).Msg("Successfully updated Redmine issue status")
+	return nil
+}
+
 func reopenRedmineIssue(issueId int) error {
 	updateData := map[string]interface{}{
 		"issue": map[string]interface{}{
-			"status_id": 8,
+			"status_id": IssueStatus.Feedback,
 		},
 	}
 
@@ -356,6 +420,7 @@ func createNewRedmineIssue(issue Issue) error {
 			"subject":     issue.Subject,
 			"description": issue.Description,
 			"priority_id": issue.PriorityId,
+			"status_id":   issue.StatusId,
 		},
 	}
 

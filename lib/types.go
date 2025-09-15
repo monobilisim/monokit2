@@ -73,20 +73,20 @@ type ZulipAlarm struct {
 
 type Issue struct {
 	gorm.Model
-	Id                int     `gorm:"int" json:"id,omitempty"`
-	Notes             string  `gorm:"text" json:"notes,omitempty"`
-	ProjectId         string  `gorm:"text" json:"project_id,omitempty"`
-	TrackerId         int     `gorm:"int" json:"tracker_id,omitempty"`
-	Description       string  `gorm:"text" json:"description,omitempty"`
-	Subject           string  `gorm:"text" json:"subject,omitempty"`
-	PriorityId        int     `gorm:"int" json:"priority_id,omitempty"`
-	StatusId          int     `gorm:"int" json:"status_id,omitempty"`
-	AssignedToId      string  `gorm:"text" json:"assigned_to_id"`
-	ProjectIdentifier string  `gorm:"text"`          // internal use
-	Hostname          string  `gorm:"text"`          // internal use
-	Status            *string `gorm:"text" json:"-"` // down or up
-	Service           *string `gorm:"text" json:"-"` // plugin name
-	Module            *string `gorm:"text" json:"-"` // plugin's module name
+	Id                int    `gorm:"int" json:"id,omitempty"`
+	Notes             string `gorm:"text" json:"notes,omitempty"`
+	ProjectId         string `gorm:"text" json:"project_id,omitempty"`
+	TrackerId         int    `gorm:"int" json:"tracker_id,omitempty"`
+	Description       string `gorm:"text" json:"description,omitempty"`
+	Subject           string `gorm:"text" json:"subject,omitempty"`
+	PriorityId        int    `gorm:"int" json:"priority_id,omitempty"`
+	StatusId          int    `gorm:"int" json:"status_id,omitempty"`
+	AssignedToId      string `gorm:"text" json:"assigned_to_id"`
+	ProjectIdentifier string `gorm:"text"`          // internal use
+	Hostname          string `gorm:"text"`          // internal use
+	Status            string `gorm:"text" json:"-"` // down or up
+	Service           string `gorm:"text" json:"-"` // plugin name
+	Module            string `gorm:"text" json:"-"` // plugin's module name
 }
 
 type RedmineIssue struct {
@@ -118,4 +118,27 @@ var IssuePriority = struct {
 	Normal:  3, // 3 is normal priority
 	High:    2, // 2 is high priority
 	Urgent:  1, // 1 is the highest priority
+}
+
+// Working = in progress
+//
+// InBreak = in break time
+//
+// Feedback = waiting for employee
+//
+// Feedback2 = waiting for customer
+var IssueStatus = struct {
+	Working   int // in progress
+	InBreak   int // in break time
+	Feedback  int // waiting for employee
+	Feedback2 int // waiting for customer
+	Resolved  int
+	Closed    int
+}{
+	Working:   2, // in progress
+	InBreak:   7, // in break time
+	Feedback:  8, // waiting for employee
+	Feedback2: 4, // waiting for customer
+	Resolved:  3,
+	Closed:    5,
 }
