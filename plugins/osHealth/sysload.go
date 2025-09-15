@@ -31,8 +31,10 @@ func CheckSystemLoad(logger zerolog.Logger) {
 		logger.Error().Err(err).Msg("Failed to get CPU core count")
 	}
 
-	if loadAverage.Load1 >= lib.OsHealthConfig.SystemLoadAlarm.LimitMultiplier*float64(cpuCores) {
-		stringifiedLoadLimit := fmt.Sprintf("%.2f", lib.OsHealthConfig.SystemLoadAlarm.LimitMultiplier*float64(cpuCores))
+	loadLimit := lib.OsHealthConfig.SystemLoadAlarm.LimitMultiplier * float64(cpuCores)
+
+	if loadAverage.Load1 >= loadLimit {
+		stringifiedLoadLimit := fmt.Sprintf("%.2f", loadLimit)
 		stringifiedLoad := fmt.Sprintf("%.2f", loadAverage.Load1)
 		stringifiedInterval := fmt.Sprintf("%d", lib.GlobalConfig.ZulipAlarm.Interval)
 
@@ -100,10 +102,44 @@ func CheckSystemLoad(logger zerolog.Logger) {
 				Status:            down,
 			})
 		}
+
+		issue := lib.Issue{
+			ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+			Hostname:          lib.GlobalConfig.Hostname,
+			Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
+			Description:       alarmMessage,
+			PriorityId:        lib.IssuePriority.Urgent,
+			Service:           &pluginName,
+			Module:            &moduleName,
+			Status:            &down,
+		}
+
+		err = lib.CreateRedmineIssue(issue)
+
+		if err == nil {
+			lib.DB.Create(&issue)
+		}
+
 	} else {
 		var lastAlarm lib.ZulipAlarm
+		var lastIssue lib.Issue
 
 		err := lib.DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+				lib.GlobalConfig.ProjectIdentifier,
+				lib.GlobalConfig.Hostname,
+				pluginName,
+				moduleName).
+			Order("id DESC").
+			Limit(1).
+			Find(&lastIssue).Error
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		err = lib.DB.
 			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
 				lib.GlobalConfig.ProjectIdentifier,
 				lib.GlobalConfig.Hostname,
@@ -118,9 +154,27 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			return
 		}
 
-		if lastAlarm.Status == down {
-			alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - System load is back to normal"
+		alarmMessage := fmt.Sprintf("[osHealth] - %s - System load is back to normal", lib.GlobalConfig.Hostname)
 
+		if lastIssue.Status == &down {
+			issue := lib.Issue{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
+				Notes:             fmt.Sprintf("Sistem yükü normale döndü (%.2f)", loadAverage.Load1),
+				PriorityId:        lib.IssuePriority.Urgent,
+				Service:           &pluginName,
+				Module:            &moduleName,
+				Status:            &up,
+			}
+
+			err = lib.CreateRedmineIssue(issue)
+			if err == nil {
+				lib.DB.Create(&issue)
+			}
+		}
+
+		if lastAlarm.Status == down {
 			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
 			if err == nil {
 				lib.DB.Create(&lib.ZulipAlarm{

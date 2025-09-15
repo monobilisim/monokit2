@@ -171,6 +171,18 @@ func sendZulipWebhookAlarm(url string, message string) error {
 // service, module name and status can be nil if not applicable
 //
 // instead of directly giving them as string, giving them as pointer to string
+//
+// Example input:
+//
+//	issue := lib.Issue{
+//		ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+//		Hostname:          lib.GlobalConfig.Hostname,
+//		Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
+//		Description:       alarmMessage,
+//		Service:           &pluginName,
+//		Module:            &moduleName,
+//		Status:            &down
+//	}
 func CreateRedmineIssue(issue Issue) error {
 	if !GlobalConfig.Redmine.Enabled {
 		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")

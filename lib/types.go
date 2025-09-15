@@ -105,3 +105,17 @@ type SystemdUnits struct {
 	Uptime            int64  `gorm:"int"`
 	Description       string `gorm:"text"`
 }
+
+var IssuePriority = struct {
+	Default int
+	Low     int
+	Normal  int
+	High    int
+	Urgent  int
+}{
+	Default: 5, // 5 is the lowest priority
+	Low:     4, // 4 is low priority
+	Normal:  3, // 3 is normal priority
+	High:    2, // 2 is high priority
+	Urgent:  1, // 1 is the highest priority
+}
