@@ -6,13 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"time"
-)
-
-var (
-	zulipAlarmQueue []string
-	queueMutex      sync.Mutex
 )
 
 // service = plugin name, module = specific module in the plugin, status = alarm status like "up" or "down"
