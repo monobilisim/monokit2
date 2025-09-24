@@ -5,7 +5,7 @@ system-load-alarm:
   # sends what creates the load into alarm message
   top-processes:
     enabled: true
-    processes: 20
+    processes: 10
 
 ram-usage-alarm:
   enabled: true
@@ -14,7 +14,7 @@ ram-usage-alarm:
   # sends what creates the ram usage into alarm message
   top-processes:
     enabled: true
-    processes: 20
+    processes: 10
 
 disk-usage-alarm:
   enabled: true
