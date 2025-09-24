@@ -59,8 +59,8 @@ func CheckSystemInit(logger zerolog.Logger) {
 			continue
 		}
 
-		// if service started in last 20 seconds that means it has restarted
-		if savedService.Uptime > service.Uptime && service.Uptime > 0 && savedService.Uptime-service.Uptime < 20 {
+		// if service started in last 60 seconds that means it has restarted
+		if savedService.Uptime > service.Uptime && service.Uptime > 0 && savedService.Uptime-service.Uptime < 60 {
 			logger.Debug().Msgf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
 			alarmMessage := fmt.Sprintf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
 
@@ -87,7 +87,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 
 		if service.ActiveState != "active" && savedService.ActiveState == "active" {
 			logger.Debug().Msgf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
-			alarmMessage := fmt.Sprintf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
+			alarmMessage := fmt.Sprintf("[osHealth] - %s - Service %s is down. Current state: %s", lib.GlobalConfig.Hostname, service.Name, service.ActiveState)
 
 			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
 			if err == nil {
