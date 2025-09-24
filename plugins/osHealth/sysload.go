@@ -80,13 +80,14 @@ func CheckSystemLoad(logger zerolog.Logger) {
 					return usages[i].CPU > usages[j].CPU
 				})
 
-				alarmMessage += "\n\nTop CPU consuming processes:\n"
-				alarmMessage += fmt.Sprintf("%-8s %-25s %-10s %-10s\n", "PID", "NAME", "CPU%", "RAM%")
+				alarmMessage += "\n\nTop CPU consuming processes:\n\n"
+				alarmMessage += "| PID | NAME | CPU% | RAM% |\n"
+				alarmMessage += "| --- | --- | --- | --- |\n"
 				for i, u := range usages {
 					if i >= lib.OsHealthConfig.SystemLoadAlarm.TopProcesses.Processes {
 						break
 					}
-					alarmMessage += fmt.Sprintf("%-8d %-25s %-10.2f %-10.2f\n", u.Pid, u.Name, u.CPU, u.RAM)
+					alarmMessage += fmt.Sprintf("| %d | %s | %.2f | %.2f |\n", u.Pid, u.Name, u.CPU, u.RAM)
 				}
 			}
 		}
@@ -103,16 +104,49 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			})
 		}
 
-		issue := lib.Issue{
-			ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-			Hostname:          lib.GlobalConfig.Hostname,
-			Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
-			Description:       alarmMessage,
-			StatusId:          lib.IssueStatus.Feedback,
-			PriorityId:        lib.IssuePriority.Urgent,
-			Service:           pluginName,
-			Module:            moduleName,
-			Status:            down,
+		var lastIssue lib.Issue
+
+		err = lib.DB.
+			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+				lib.GlobalConfig.ProjectIdentifier,
+				lib.GlobalConfig.Hostname,
+				pluginName,
+				moduleName).
+			Order("table_id DESC").
+			Limit(1).
+			Find(&lastIssue).Error
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		var issue lib.Issue
+
+		if lastIssue.Status == up {
+			issue = lib.Issue{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
+				Notes:             fmt.Sprintf("Sorun devam ediyor, sistem yükü %.2f", loadAverage.Load1),
+				StatusId:          lib.IssueStatus.Feedback,
+				PriorityId:        lib.IssuePriority.Urgent,
+				Service:           pluginName,
+				Module:            moduleName,
+				Status:            down,
+			}
+		} else {
+			issue = lib.Issue{
+				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+				Hostname:          lib.GlobalConfig.Hostname,
+				Subject:           fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit),
+				Description:       alarmMessage,
+				StatusId:          lib.IssueStatus.Feedback,
+				PriorityId:        lib.IssuePriority.Urgent,
+				Service:           pluginName,
+				Module:            moduleName,
+				Status:            down,
+			}
 		}
 
 		err = lib.CreateRedmineIssue(issue)
@@ -131,7 +165,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 				lib.GlobalConfig.Hostname,
 				pluginName,
 				moduleName).
-			Order("id DESC").
+			Order("table_id DESC").
 			Limit(1).
 			Find(&lastIssue).Error
 
@@ -154,8 +188,6 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			lib.Logger.Error().Err(err).Msg("Failed to get last alarm from database")
 			return
 		}
-
-		lib.Logger.Debug().Msgf("Last issue: %v, %v, %v", lastIssue.Status, lastIssue.Service, lastIssue.Module)
 
 		alarmMessage := fmt.Sprintf("[osHealth] - %s - System load is back to normal", lib.GlobalConfig.Hostname)
 

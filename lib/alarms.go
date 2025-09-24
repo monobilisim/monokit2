@@ -205,7 +205,7 @@ func CreateRedmineIssue(issue Issue) error {
 				GlobalConfig.Hostname,
 				issue.Service,
 				issue.Module).
-			Order("id DESC").
+			Order("table_id DESC").
 			Limit(1).
 			Find(&lastIssue).Error
 
@@ -215,7 +215,7 @@ func CreateRedmineIssue(issue Issue) error {
 				GlobalConfig.Hostname,
 				issue.Service,
 				issue.Module).
-			Order("id DESC").
+			Order("table_id DESC").
 			Limit(GlobalConfig.Redmine.Limit).
 			Find(&lastIssues).Error
 	}
@@ -225,7 +225,7 @@ func CreateRedmineIssue(issue Issue) error {
 			Where("project_identifier = ? AND hostname = ?",
 				GlobalConfig.ProjectIdentifier,
 				GlobalConfig.Hostname).
-			Order("id DESC").
+			Order("table_id DESC").
 			Limit(1).
 			Find(&lastIssue).Error
 
@@ -233,7 +233,7 @@ func CreateRedmineIssue(issue Issue) error {
 			Where("project_identifier = ? AND hostname = ?",
 				GlobalConfig.ProjectIdentifier,
 				GlobalConfig.Hostname).
-			Order("id DESC").
+			Order("table_id DESC").
 			Limit(GlobalConfig.Redmine.Limit).
 			Find(&lastIssues).Error
 	}

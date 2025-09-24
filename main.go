@@ -22,6 +22,46 @@ func main() {
 		panic("Failed to create log directory: " + err.Error())
 	}
 
+	// reset command to delete database and logs before database init so no schema issues
+	if len(os.Args) > 1 {
+		if os.Args[1] == "reset" || os.Args[1] == "reset --force" {
+
+			if os.Args[1] == "reset" {
+				fmt.Println("You are going to delete monokit2's database and logs. Are you sure? (y/n)")
+				var response string
+				fmt.Scanln(&response)
+				if response == "y" || response == "Y" {
+					if err := os.Remove(lib.GlobalConfig.SqliteLocation); err != nil {
+						fmt.Printf("Error deleting database: %v\n", err)
+						return
+					}
+
+					if err := os.RemoveAll(lib.GlobalConfig.LogLocation); err != nil {
+						fmt.Printf("Error deleting logs: %v\n", err)
+						return
+					}
+				} else {
+					fmt.Println("Aborting...")
+					return
+				}
+			}
+
+			if os.Args[1] == "reset --force" {
+				if err := os.Remove(lib.GlobalConfig.SqliteLocation); err != nil {
+					fmt.Printf("Error deleting database: %v\n", err)
+					return
+				}
+
+				if err := os.RemoveAll(lib.GlobalConfig.LogLocation); err != nil {
+					fmt.Printf("Error deleting logs: %v\n", err)
+					return
+				}
+			}
+
+			return
+		}
+	}
+
 	if err = lib.InitializeDatabase(); err != nil {
 		fmt.Printf("Error initializing database: %v\n", err)
 		return

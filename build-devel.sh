@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+ACTIVE_PLUGINS=(osHealth)
+
 case $1 in
     "build")
         case $2 in
@@ -10,6 +12,22 @@ case $1 in
                 cd plugins/osHealth
                 go build -ldflags "-X 'main.version=devel'" -tags osHealth -o ../bin/
                 cd ../..
+                ;;
+            "all")
+                if [ -f ./bin/monokit2 ]; then
+                    rm ./bin/monokit2
+                fi
+
+                go build -ldflags "-X 'main.version=devel'" -o ./bin/monokit2 ./main.go
+
+                for plugin in "${ACTIVE_PLUGINS[@]}"; do
+                    if [ -f plugins/bin/$plugin ]; then
+                        rm plugins/bin/$plugin
+                    fi
+                    cd plugins/$plugin
+                    go build -ldflags "-X 'main.version=devel'" -tags $plugin -o ../bin/
+                    cd ../..
+                done
                 ;;
             *)
                 if [ -f ./bin/monokit2 ]; then
@@ -29,6 +47,17 @@ case $1 in
                 go build -ldflags "-X 'main.version=devel'" -tags osHealth -o ../bin/
                 cd ../..
                 ./plugins/bin/osHealth "${@:3}"
+                ;;
+            "all")
+                for plugin in "${ACTIVE_PLUGINS[@]}"; do
+                    if [ -f plugins/bin/$plugin ]; then
+                        rm plugins/bin/$plugin
+                    fi
+                    cd plugins/$plugin
+                    go build -ldflags "-X 'main.version=devel'" -tags $plugin -o ../bin/
+                    cd ../..
+                    ./plugins/bin/$plugin "${@:3}"
+                done
                 ;;
             *)
                 if [ -f ./bin/monokit2 ]; then
@@ -50,6 +79,13 @@ case $1 in
         case $3 in
             "osHealth")
                 scp ./plugins/bin/$3 $2:/var/lib/monokit2/plugins
+                ;;
+            "all")
+                scp ./bin/monokit2 $2:/usr/local/bin
+
+                for plugin in "${ACTIVE_PLUGINS[@]}"; do
+                    scp ./plugins/bin/$plugin $2:/var/lib/monokit2/plugins
+                done
                 ;;
             *)
                 scp ./bin/monokit2 $2:/usr/local/bin

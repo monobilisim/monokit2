@@ -73,6 +73,7 @@ type ZulipAlarm struct {
 
 type Issue struct {
 	gorm.Model
+	TableId           uint   `gorm:"primaryKey;autoIncrement"`
 	Id                int    `gorm:"int" json:"id,omitempty"`
 	Notes             string `gorm:"text" json:"notes,omitempty"`
 	ProjectId         string `gorm:"text" json:"project_id,omitempty"`
