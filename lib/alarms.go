@@ -287,11 +287,17 @@ func CreateRedmineIssue(issue Issue) error {
 		return fmt.Errorf(message)
 	}
 
+	if lastIssue.Status == issue.Status {
+		Logger.Info().Str("subject", issue.Subject).Msg("Last issue status same as new issue, skipping creating new one")
+		return nil
+	}
+
 	// if the new issue has a different status than the last issue, update the status of the last issue
 	if lastIssue.Status != issue.Status {
 		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
 		if existingIssue != nil {
 			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, updating status instead of creating new one")
+			issue.Id = existingIssue.Id
 			return updateRedmineIssueStatus(existingIssue.Id, issue)
 		}
 	}
@@ -302,7 +308,8 @@ func CreateRedmineIssue(issue Issue) error {
 		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
 		if existingIssue != nil {
 			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, reopening instead of creating new one")
-			return reopenRedmineIssue(existingIssue.Id)
+			issue.Id = existingIssue.Id
+			return reopenRedmineIssue(existingIssue.Id, issue)
 		}
 	}
 
@@ -315,7 +322,7 @@ func findRecentSimilarIssue(subject string, hoursBack int) *Issue {
 	hoursAgo := now.Add(-time.Duration(hoursBack) * time.Hour)
 
 	var existingIssues []Issue
-	result := DB.Where("subject = ? AND created_at > ?", subject, hoursAgo).Find(&existingIssues)
+	result := DB.Where("subject = ? AND created_at > ?", subject, hoursAgo).Order("id DESC").Find(&existingIssues)
 	if result.Error != nil {
 		Logger.Error().Err(result.Error).Msg("Failed to query database for existing issues")
 		return nil
@@ -366,11 +373,16 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 		return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
 	}
 
+	result := DB.Create(&issue)
+	if result.Error != nil {
+		Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+	}
+
 	Logger.Info().Int("issue_id", issueId).Int("status_id", issue.StatusId).Msg("Successfully updated Redmine issue status")
 	return nil
 }
 
-func reopenRedmineIssue(issueId int) error {
+func reopenRedmineIssue(issueId int, issue Issue) error {
 	updateData := map[string]interface{}{
 		"issue": map[string]interface{}{
 			"status_id": IssueStatus.Feedback,
@@ -406,6 +418,11 @@ func reopenRedmineIssue(issueId int) error {
 		body, _ := io.ReadAll(resp.Body)
 		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
 		return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
+	}
+
+	result := DB.Create(&issue)
+	if result.Error != nil {
+		Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
 	}
 
 	Logger.Info().Int("issue_id", issueId).Msg("Successfully reopened Redmine issue")

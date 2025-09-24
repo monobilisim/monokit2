@@ -65,13 +65,14 @@ func CheckSystemRAM(logger zerolog.Logger) {
 					return usages[i].RAM > usages[j].RAM
 				})
 
-				alarmMessage += "\n\nTop RAM consuming processes:\n"
-				alarmMessage += fmt.Sprintf("%-8s %-25s %-10s %-10s\n", "PID", "NAME", "CPU%", "RAM%")
+				alarmMessage += "\n\nTop RAM consuming processes:\n\n"
+				alarmMessage += "| PID | NAME | CPU% | RAM% |\n"
+				alarmMessage += "| --- | --- | --- | --- |\n"
 				for i, u := range usages {
 					if i >= lib.OsHealthConfig.RamUsageAlarm.TopProcesses.Processes {
 						break
 					}
-					alarmMessage += fmt.Sprintf("%-8d %-25s %-10.2f %-10.2f\n", u.Pid, u.Name, u.CPU, u.RAM)
+					alarmMessage += fmt.Sprintf("| %d | %s | %.2f | %.2f |\n", u.Pid, u.Name, u.CPU, u.RAM)
 				}
 			}
 		}

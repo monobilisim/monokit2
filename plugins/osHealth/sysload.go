@@ -150,11 +150,6 @@ func CheckSystemLoad(logger zerolog.Logger) {
 		}
 
 		err = lib.CreateRedmineIssue(issue)
-
-		if err == nil {
-			lib.DB.Create(&issue)
-		}
-
 	} else {
 		var lastAlarm lib.ZulipAlarm
 		var lastIssue lib.Issue
@@ -207,9 +202,6 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			lib.Logger.Debug().Msgf("Creating Redmine issue: %+v", issue)
 
 			err = lib.CreateRedmineIssue(issue)
-			if err == nil {
-				lib.DB.Create(&issue)
-			}
 		}
 
 		if lastAlarm.Status == down {
