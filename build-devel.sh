@@ -13,6 +13,14 @@ case $1 in
                 go build -ldflags "-X 'main.version=devel'" -tags osHealth -o ../bin/
                 cd ../..
                 ;;
+            "ufwApply")
+                if [ -f plugins/bin/ufwApply ]; then
+                    rm plugins/bin/ufwApply
+                fi
+                cd plugins/ufwApply
+                go build -ldflags "-X 'main.version=devel'" -tags ufwApply -o ../bin/
+                cd ../..
+                ;;
             "all")
                 if [ -f ./bin/monokit2 ]; then
                     rm ./bin/monokit2
@@ -48,6 +56,15 @@ case $1 in
                 cd ../..
                 ./plugins/bin/osHealth "${@:3}"
                 ;;
+            "ufwApply")
+                if [ -f plugins/bin/ufwApply ]; then
+                    rm plugins/bin/ufwApply
+                fi
+                cd plugins/ufwApply
+                go build -ldflags "-X 'main.version=devel'" -tags ufwApply -o ../bin/
+                cd ../..
+                ./plugins/bin/ufwApply "${@:3}"
+                ;;
             "all")
                 for plugin in "${ACTIVE_PLUGINS[@]}"; do
                     if [ -f plugins/bin/$plugin ]; then
@@ -78,6 +95,9 @@ case $1 in
 
         case $3 in
             "osHealth")
+                scp ./plugins/bin/$3 $2:/var/lib/monokit2/plugins
+                ;;
+            "ufwApply")
                 scp ./plugins/bin/$3 $2:/var/lib/monokit2/plugins
                 ;;
             "all")

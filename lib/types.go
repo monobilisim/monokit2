@@ -60,6 +60,22 @@ type OsHealthConfigType struct {
 	} `yaml:"disk-usage-alarm"`
 }
 
+type UfwApplyConfigType struct {
+	RuleSources []struct {
+		Url      string `yaml:"url"`
+		Protocol string `yaml:"protocol"`
+		Port     string `yaml:"port"`
+		Comment  string `yaml:"comment"`
+	} `yaml:"rule-sources"`
+	StaticRules []struct {
+		IP       string `yaml:"ip"`
+		Protocol string `yaml:"protocol"`
+		Port     string `yaml:"port"`
+		Comment  string `yaml:"comment"`
+	} `yaml:"static-rules"`
+	RulesetDir string `yaml:"ruleset-dir"`
+}
+
 type ZulipAlarm struct {
 	gorm.Model
 	Id                uint   `gorm:"primaryKey"`

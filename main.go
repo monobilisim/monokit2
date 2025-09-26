@@ -14,7 +14,6 @@ func main() {
 	err := lib.InitConfig()
 	if err != nil {
 		fmt.Printf("Error initializing config: %v\n", err)
-		return
 	}
 
 	err = os.MkdirAll(lib.LogDir, os.ModePerm)

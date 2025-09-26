@@ -13,6 +13,7 @@ var DbDir string
 var PluginsDir string
 var GlobalConfig GlobalConfigType
 var OsHealthConfig OsHealthConfigType
+var UfwApplyConfig UfwApplyConfigType
 
 func InitConfig() error {
 	if _, err := os.Stat("/etc/mono"); os.IsNotExist(err) {
@@ -44,6 +45,7 @@ func InitConfig() error {
 	// /var/log/monokit2/monokit.log -> /var/log/monokit2
 	LogDir = strings.Join(strings.Split(GlobalConfig.LogLocation, "/")[0:len(strings.Split(GlobalConfig.LogLocation, "/"))-1], "/")
 
+	// /var/lib/monokit2/monokit.db -> /var/lib/monokit2
 	DbDir = strings.Join(strings.Split(GlobalConfig.SqliteLocation, "/")[0:len(strings.Split(GlobalConfig.SqliteLocation, "/"))-1], "/")
 
 	PluginsDir = GlobalConfig.PluginsLocation
@@ -64,6 +66,25 @@ func InitConfig() error {
 		err = yaml.Unmarshal(osHealthConfigData, &OsHealthConfig)
 		if err != nil {
 			return fmt.Errorf("failed to parse os configuration file: %w", err)
+		}
+	}
+
+	ufwApplyConfigExists := false
+	if _, err := os.Stat("/etc/mono/ufw.yml"); err == nil {
+		ufwApplyConfigExists = true
+	} else {
+		return fmt.Errorf("ufw configuration file does not exist")
+	}
+
+	if ufwApplyConfigExists {
+		ufwApplyConfigData, err := os.ReadFile("/etc/mono/ufw.yml")
+		if err != nil {
+			return fmt.Errorf("failed to read ufw configuration file: %w", err)
+		}
+
+		err = yaml.Unmarshal(ufwApplyConfigData, &UfwApplyConfig)
+		if err != nil {
+			return fmt.Errorf("failed to parse ufw configuration file: %w", err)
 		}
 	}
 
