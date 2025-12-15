@@ -1,6 +1,6 @@
 module github.com/monobilisim/monokit2/plugins/osHealth
 
-go 1.24.2
+go 1.25.5
 
 replace github.com/monobilisim/monokit2 => ../../
 

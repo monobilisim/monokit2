@@ -65,11 +65,11 @@ func CheckSystemDisk(logger zerolog.Logger) {
 
 	if len(exceededDiskInfos) > 0 {
 		alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - Disk usage exceeded " + strconv.Itoa(lib.OsHealthConfig.DiskUsageAlarm.Limit) + "% on the following partitions:\n\n"
+		alarmMessage += "| Device | Mount | Usage | Total |\n"
+		alarmMessage += "| --- | --- | --- | --- |\n"
 
 		for _, diskInfo := range exceededDiskInfos {
-			alarmMessage += "| Mount | Usage | Total |\n"
-			alarmMessage += "| --- | --- | --- |\n"
-			alarmMessage += fmt.Sprintf("| %s | %.1f%% | (%s/%s) |\n", diskInfo.Mountpoint, diskInfo.UsedPct, diskInfo.Used, diskInfo.Total)
+			alarmMessage += fmt.Sprintf("| %s | %s | %.1f%% | (%s/%s) |\n", diskInfo.Device, diskInfo.Mountpoint, diskInfo.UsedPct, diskInfo.Used, diskInfo.Total)
 		}
 
 		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
