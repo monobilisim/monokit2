@@ -106,6 +106,15 @@ type Issue struct {
 	Module            string `gorm:"text" json:"-"` // plugin's module name
 }
 
+type Version struct {
+	gorm.Model
+	Id           uint   `gorm:"primaryKey;autoIncrement"`
+	Name         string `gorm:"text,unique" json:"name"`
+	Version      string `gorm:"text" json:"version"`       // direct version
+	VersionMulti string `gorm:"text" json:"version_multi"` // version in json format for software with multiple components
+	Status       string `gorm:"text" json:"status"`        // installed, not-installed
+}
+
 type RedmineIssue struct {
 	Issue Issue `json:"issue"`
 }

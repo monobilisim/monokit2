@@ -28,6 +28,8 @@ func InitializeDatabase() error {
 
 	db.AutoMigrate(&SystemdUnits{})
 
+	db.AutoMigrate(&Version{})
+
 	DB = db
 
 	return nil

@@ -27,3 +27,8 @@ type ZFSPoolCapacity struct {
 	Name     string
 	Capacity int
 }
+
+type ApplicationVersion struct {
+	Name    string
+	Version string
+}

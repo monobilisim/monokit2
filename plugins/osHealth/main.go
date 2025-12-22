@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,13 +15,12 @@ var version string
 var pluginName string = "osHealth"
 var up string = "up"
 var down string = "down"
+var configFiles []string = []string{"os.yml"}
 
 func main() {
 	if len(os.Args) > 1 {
-		if os.Args[1] == "--version" || os.Args[1] == "-v" || os.Args[1] == "version" || os.Args[1] == "v" {
-			fmt.Printf(version)
-			return
-		}
+		lib.HandleCommonPluginArgs(os.Args, version, configFiles)
+		return
 	}
 
 	lib.InitConfig()
@@ -35,6 +33,8 @@ func main() {
 	lib.InitializeDatabase()
 
 	logger.Info().Msg("Starting OS Health monitoring plugin...")
+
+	CheckApplicationVersion(logger)
 
 	// checks system load
 	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {
