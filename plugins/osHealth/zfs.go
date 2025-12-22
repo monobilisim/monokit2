@@ -13,7 +13,7 @@ import (
 )
 
 func CheckSystemDiskZFS(logger zerolog.Logger) {
-	var moduleName string = "zfs"
+	var moduleName string
 
 	_, err := exec.LookPath("zpool")
 	if err != nil {
@@ -28,6 +28,9 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 		logger.Error().Err(err).Msg("Failed to execute zpool command")
 		return
 	}
+
+	unhealthyPools := []ZFSPoolHealth{}
+	limitExceededPools := []ZFSPoolCapacity{}
 
 	// pool1 ONLINE 0%
 	// pool2 DEGRADED 0%
@@ -49,54 +52,12 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 		capacityStr := fields[2]
 
 		if health != "ONLINE" {
-			logger.Warn().Str("pool", poolName).Str("health", health).Msg("ZFS pool is not healthy")
-
-			alarmMessage := fmt.Sprintf("[osHealth] - %s - ZFS pool %s is not healthy: %s", lib.GlobalConfig.Hostname, poolName, health)
-
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           fmt.Sprintf("ZFS pool %s is not healthy: %s", poolName, health),
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            down,
-				})
-			}
-		} else {
-			var lastAlarm lib.ZulipAlarm
-
-			err := lib.DB.
-				Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-					lib.GlobalConfig.ProjectIdentifier,
-					lib.GlobalConfig.Hostname,
-					pluginName,
-					moduleName).
-				Order("id DESC").
-				Limit(1).
-				Find(&lastAlarm).Error
-
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to get last alarm from database")
-				return
+			unhealthyPool := ZFSPoolHealth{
+				Name:   poolName,
+				Health: health,
 			}
 
-			if lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[osHealth] - %s - ZFS pool %s is now healthy", lib.GlobalConfig.Hostname, poolName)
-
-				err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-				if err == nil {
-					lib.DB.Create(&lib.ZulipAlarm{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Content:           alarmMessage,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            up,
-					})
-				}
-			}
+			unhealthyPools = append(unhealthyPools, unhealthyPool)
 		}
 
 		capacityStr = strings.TrimSuffix(capacityStr, "%")
@@ -111,56 +72,79 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 			Int("capacity_percent", capacity).
 			Msg("ZFS pool usage information")
 
-		moduleName := "zfsCapacity"
 		if capacity >= lib.OsHealthConfig.DiskUsageAlarm.Limit {
-			logger.Warn().Str("pool", poolName).Int("capacity", capacity).Msg("ZFS pool capacity exceeded limit")
-
-			alarmMessage := fmt.Sprintf("[osHealth] - %s - ZFS pool %s capacity exceeded the limit %d%% (%s%%)", lib.GlobalConfig.Hostname, poolName, lib.OsHealthConfig.DiskUsageAlarm.Limit, capacityStr)
-
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           fmt.Sprintf("ZFS pool %s is not healthy: %s", poolName, health),
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            down,
-				})
-			}
-		} else {
-			var lastAlarm lib.ZulipAlarm
-
-			err := lib.DB.
-				Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-					lib.GlobalConfig.ProjectIdentifier,
-					lib.GlobalConfig.Hostname,
-					pluginName,
-					moduleName).
-				Order("id DESC").
-				Limit(1).
-				Find(&lastAlarm).Error
-
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to get last alarm from database")
-				return
+			limitExceededPool := ZFSPoolCapacity{
+				Name:     poolName,
+				Capacity: capacity,
 			}
 
-			if lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[osHealth] - %s - All ZFS pools are now under the limit of %d%%", lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit)
+			limitExceededPools = append(limitExceededPools, limitExceededPool)
+		}
+	}
 
-				err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-				if err == nil {
-					lib.DB.Create(&lib.ZulipAlarm{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Content:           alarmMessage,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            up,
-					})
-				}
-			}
+	moduleName = "zfsHealth"
+	// one or more pools are not healthy
+	if len(unhealthyPools) > 0 {
+		tableHeaders := []string{"NAME", "HEALTH"}
+		tableValues := [][]string{}
+		for _, pool := range unhealthyPools {
+			logger.Warn().Str("pool", pool.Name).Str("health", pool.Health).Msg("ZFS pool is not healthy")
+			tableValues = append(tableValues, []string{pool.Name, pool.Health})
+		}
+
+		table := lib.CreateMarkdownTable(tableHeaders, tableValues)
+
+		alarmMessage := fmt.Sprintf("[%s] - %s - One or more ZFS pools are not healthy:\n\n", pluginName, lib.GlobalConfig.Hostname)
+		alarmMessage += table
+
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+	}
+
+	// all pools are healthy now
+	if len(unhealthyPools) == 0 {
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to get last alarm from database")
+			return
+		}
+
+		if lastAlarm.Status == down {
+			alarmMessage := fmt.Sprintf("[%s] - %s - All ZFS pools are now healthy", pluginName, lib.GlobalConfig.Hostname)
+
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+		}
+	}
+
+	moduleName = "zfsCapacity"
+	if len(limitExceededPools) > 0 {
+		tableHeaders := []string{"NAME", "CAPACITY"}
+		tableValues := [][]string{}
+		for _, pool := range limitExceededPools {
+			logger.Warn().Str("pool", pool.Name).Int("capacity", pool.Capacity).Msg("ZFS pool capacity exceeded limit")
+			tableValues = append(tableValues, []string{pool.Name, fmt.Sprintf("%d%%", pool.Capacity)})
+		}
+
+		table := lib.CreateMarkdownTable(tableHeaders, tableValues)
+
+		alarmMessage := fmt.Sprintf("[%s] - %s - One or more ZFS pools have exceeded capacity limit of %d%%:\n\n", pluginName, lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit)
+		alarmMessage += table
+
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+	}
+
+	if len(limitExceededPools) == 0 {
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to get last alarm from database")
+			return
+		}
+
+		if lastAlarm.Status == down {
+			alarmMessage := fmt.Sprintf("[%s] - %s - All ZFS pools are now under the capacity limit of %d%%", pluginName, lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit)
+
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
 	}
 }

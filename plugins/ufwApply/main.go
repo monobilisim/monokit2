@@ -152,18 +152,7 @@ func main() {
 
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to dry run ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
 
-		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-
-		if err == nil {
-			lib.DB.Create(&lib.ZulipAlarm{
-				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-				Hostname:          lib.GlobalConfig.Hostname,
-				Content:           alarmMessage,
-				Service:           pluginName,
-				Module:            moduleName,
-				Status:            down,
-			})
-		}
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
 		return
 	}
@@ -177,18 +166,7 @@ func main() {
 	if err == nil && lastAlarm.Status == down {
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW rules applied successfully after previous failure", lib.GlobalConfig.Hostname)
 
-		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-
-		if err == nil {
-			lib.DB.Create(&lib.ZulipAlarm{
-				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-				Hostname:          lib.GlobalConfig.Hostname,
-				Content:           alarmMessage,
-				Service:           pluginName,
-				Module:            moduleName,
-				Status:            up,
-			})
-		}
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 	} else {
 		logger.Error().Err(err).Msg("Failed to get last dry run alarm from database")
 		return

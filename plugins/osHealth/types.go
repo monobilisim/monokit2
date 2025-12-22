@@ -17,3 +17,13 @@ type DiskInfo struct {
 	UsedPct    float64
 	Fstype     string
 }
+
+type ZFSPoolHealth struct {
+	Name   string
+	Health string
+}
+
+type ZFSPoolCapacity struct {
+	Name     string
+	Capacity int
+}

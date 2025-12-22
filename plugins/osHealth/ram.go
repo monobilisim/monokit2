@@ -77,29 +77,9 @@ func CheckSystemRAM(logger zerolog.Logger) {
 			}
 		}
 
-		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-		if err == nil {
-			lib.DB.Create(&lib.ZulipAlarm{
-				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-				Hostname:          lib.GlobalConfig.Hostname,
-				Content:           alarmMessage,
-				Service:           pluginName,
-				Module:            moduleName,
-				Status:            down,
-			})
-		}
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 	} else {
-		var lastAlarm lib.ZulipAlarm
-
-		err := lib.DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				lib.GlobalConfig.ProjectIdentifier,
-				lib.GlobalConfig.Hostname,
-				pluginName,
-				moduleName).
-			Order("id DESC").
-			Limit(1).
-			Find(&lastAlarm).Error
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 		if err != nil {
 			lib.Logger.Error().Err(err).Msg("Failed to get last RAM alarm from database")
@@ -109,17 +89,7 @@ func CheckSystemRAM(logger zerolog.Logger) {
 		if lastAlarm.Status == down {
 			alarmMessage := fmt.Sprintf("[osHealth] - %s - RAM usage is back to normal", lib.GlobalConfig.Hostname)
 
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           alarmMessage,
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            up,
-				})
-			}
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
 	}
 }

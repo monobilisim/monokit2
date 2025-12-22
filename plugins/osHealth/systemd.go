@@ -64,17 +64,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 			logger.Debug().Msgf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
 			alarmMessage := fmt.Sprintf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
 
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           alarmMessage,
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            up,
-				})
-			}
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
 			if err == nil {
 				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
@@ -89,17 +79,8 @@ func CheckSystemInit(logger zerolog.Logger) {
 			logger.Debug().Msgf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
 			alarmMessage := fmt.Sprintf("[osHealth] - %s - Service %s is down. Current state: %s", lib.GlobalConfig.Hostname, service.Name, service.ActiveState)
 
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
+			err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           alarmMessage,
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            down,
-				})
-
 				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
 
 				if err != nil {
@@ -111,17 +92,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 		if service.ActiveState == "active" && savedService.ActiveState != "active" {
 
 			logger.Debug().Msgf("Service %s is active again. Current state: %s", service.Name, service.ActiveState)
-			var lastAlarm lib.ZulipAlarm
-
-			err := lib.DB.
-				Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-					lib.GlobalConfig.ProjectIdentifier,
-					lib.GlobalConfig.Hostname,
-					pluginName,
-					moduleName).
-				Order("id DESC").
-				Limit(1).
-				Find(&lastAlarm).Error
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 			if err != nil {
 				logger.Error().Err(err).Msg("Failed to get last alarm from database")
@@ -131,17 +102,8 @@ func CheckSystemInit(logger zerolog.Logger) {
 			if lastAlarm.Status == down {
 				alarmMessage := fmt.Sprintf("[osHealth] - %s - Service %s is now active", lib.GlobalConfig.Hostname, service.Name)
 
-				err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
+				err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 				if err == nil {
-					lib.DB.Create(&lib.ZulipAlarm{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Content:           alarmMessage,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            up,
-					})
-
 					err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
 
 					if err != nil {

@@ -14,50 +14,13 @@ import (
 // service, module name and status can be nil if not applicable
 //
 // instead of directly giving them as string, giving them as pointer to string
-func SendZulipAlarm(message string, service *string, module *string, status *string) error {
+func SendZulipAlarm(message string, service string, module string, status string) error {
 	var lastAlarm ZulipAlarm
 	var lastAlarms []ZulipAlarm
 	var err error
 
-	if service != nil {
-		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname,
-				service,
-				module).
-			Order("id DESC").
-			Limit(1).
-			Find(&lastAlarm).Error
-
-		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname,
-				service,
-				module).
-			Order("id DESC").
-			Limit(GlobalConfig.ZulipAlarm.Limit).
-			Find(&lastAlarms).Error
-	}
-
-	if service == nil {
-		err = DB.
-			Where("project_identifier = ? AND hostname = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname).
-			Order("id DESC").
-			Limit(1).
-			Find(&lastAlarm).Error
-
-		err = DB.
-			Where("project_identifier = ? AND hostname = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname).
-			Order("id DESC").
-			Limit(GlobalConfig.ZulipAlarm.Limit).
-			Find(&lastAlarms).Error
-	}
+	lastAlarm, err = GetLastZulipAlarm(service, module)
+	lastAlarms, err = GetLastZulipAlarms(service, module)
 
 	if err != nil {
 		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
@@ -66,7 +29,20 @@ func SendZulipAlarm(message string, service *string, module *string, status *str
 
 	// no extra checks needed if there are no previous alarms
 	if len(lastAlarms) == 0 {
-		return sendZulipAlarm(message)
+		sendErr := sendZulipAlarm(message)
+
+		if sendErr == nil {
+			DB.Create(&ZulipAlarm{
+				ProjectIdentifier: GlobalConfig.ProjectIdentifier,
+				Hostname:          GlobalConfig.Hostname,
+				Content:           message,
+				Service:           service,
+				Module:            module,
+				Status:            status,
+			})
+		}
+
+		return sendErr
 	}
 
 	// checking if alarms are duplicate
@@ -81,31 +57,66 @@ func SendZulipAlarm(message string, service *string, module *string, status *str
 
 	// checks if last alarms have the same status as the new one and if the limit is reached
 	// if so, skip sending the alarm
-	if status != nil && allSame && firstStatus == *status && len(lastAlarms) >= GlobalConfig.ZulipAlarm.Limit {
+	if allSame && firstStatus == status && len(lastAlarms) >= GlobalConfig.ZulipAlarm.Limit {
 		var message string
-		if service != nil {
-			message = fmt.Sprintf("Zulip alarm limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.ZulipAlarm.Limit, *service)
-			Logger.Info().Str("service", *service).Msg(message)
-		} else {
-			message = fmt.Sprintf("Zulip alarm limit (%d) has reached to limit, skipping this one", GlobalConfig.ZulipAlarm.Limit)
-			Logger.Info().Msg(message)
-		}
+		message = fmt.Sprintf("Zulip alarm limit (%d) has reached to limit for %s, skipping this one", GlobalConfig.ZulipAlarm.Limit, service)
+		Logger.Info().Str("service", service).Msg(message)
 		return fmt.Errorf(message)
 	}
 
 	if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
 		var message string
-		if service != nil {
-			message = fmt.Sprintf("Enough time is not passed since the last alarm from %s, skipping this one", *service)
-			Logger.Info().Str("service", *service).Msg(message)
-		} else {
-			message = "Enough time is not passed since the last alarm, skipping this one"
-			Logger.Info().Msg(message)
-		}
+		message = fmt.Sprintf("Enough time is not passed since the last alarm from %s, skipping this one", service)
+		Logger.Info().Str("service", service).Msg(message)
 		return fmt.Errorf(message)
 	}
 
-	return sendZulipAlarm(message)
+	sendErr := sendZulipAlarm(message)
+
+	if sendErr == nil {
+		DB.Create(&ZulipAlarm{
+			ProjectIdentifier: GlobalConfig.ProjectIdentifier,
+			Hostname:          GlobalConfig.Hostname,
+			Content:           message,
+			Service:           service,
+			Module:            module,
+			Status:            status,
+		})
+	}
+
+	return sendErr
+}
+
+func GetLastZulipAlarm(service string, module string) (ZulipAlarm, error) {
+	var lastAlarm ZulipAlarm
+
+	err := DB.Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+		GlobalConfig.ProjectIdentifier,
+		GlobalConfig.Hostname,
+		service,
+		module).Order("id DESC").Limit(1).Find(&lastAlarm).Error
+
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to get last alarm from database")
+		return lastAlarm, err
+	}
+
+	return lastAlarm, err
+}
+
+func GetLastZulipAlarms(service string, module string) ([]ZulipAlarm, error) {
+	var lastAlarms []ZulipAlarm
+
+	err := DB.Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+		GlobalConfig.ProjectIdentifier,
+		GlobalConfig.Hostname,
+		service,
+		module).
+		Order("id DESC").
+		Limit(GlobalConfig.ZulipAlarm.Limit).
+		Find(&lastAlarms).Error
+
+	return lastAlarms, err
 }
 
 func sendZulipAlarm(message string) error {
@@ -193,6 +204,9 @@ func CreateRedmineIssue(issue Issue) error {
 		Logger.Error().Msg("Redmine API key or URL not configured")
 		return fmt.Errorf("Redmine API key or URL not configured")
 	}
+
+	issue.ProjectIdentifier = GlobalConfig.ProjectIdentifier
+	issue.Hostname = GlobalConfig.Hostname
 
 	var lastIssue Issue
 	var lastIssues []Issue

@@ -72,17 +72,7 @@ func CheckSystemDisk(logger zerolog.Logger) {
 			alarmMessage += fmt.Sprintf("| %s | %s | %.1f%% | (%s/%s) |\n", diskInfo.Device, diskInfo.Mountpoint, diskInfo.UsedPct, diskInfo.Used, diskInfo.Total)
 		}
 
-		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-		if err == nil {
-			lib.DB.Create(&lib.ZulipAlarm{
-				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-				Hostname:          lib.GlobalConfig.Hostname,
-				Content:           alarmMessage,
-				Service:           pluginName,
-				Module:            moduleName,
-				Status:            down,
-			})
-		}
+		err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
 		var lastIssue lib.Issue
 
@@ -131,7 +121,6 @@ func CheckSystemDisk(logger zerolog.Logger) {
 
 		err = lib.CreateRedmineIssue(issue)
 	} else {
-		var lastAlarm lib.ZulipAlarm
 		var lastIssue lib.Issue
 
 		err := lib.DB.
@@ -149,15 +138,7 @@ func CheckSystemDisk(logger zerolog.Logger) {
 			return
 		}
 
-		err = lib.DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				lib.GlobalConfig.ProjectIdentifier,
-				lib.GlobalConfig.Hostname,
-				pluginName,
-				moduleName).
-			Order("id DESC").
-			Limit(1).
-			Find(&lastAlarm).Error
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed to get last alarm from database")
@@ -185,17 +166,7 @@ func CheckSystemDisk(logger zerolog.Logger) {
 		if lastAlarm.Status == down {
 			alarmMessage := "[osHealth] - " + lib.GlobalConfig.Hostname + " - All disk partitions are now under the limit of " + strconv.Itoa(lib.OsHealthConfig.DiskUsageAlarm.Limit) + "%"
 
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           alarmMessage,
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            up,
-				})
-			}
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
 	}
 }

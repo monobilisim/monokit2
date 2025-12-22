@@ -92,17 +92,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			}
 		}
 
-		err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &down)
-		if err == nil {
-			lib.DB.Create(&lib.ZulipAlarm{
-				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-				Hostname:          lib.GlobalConfig.Hostname,
-				Content:           alarmMessage,
-				Service:           pluginName,
-				Module:            moduleName,
-				Status:            down,
-			})
-		}
+		err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
 		var lastIssue lib.Issue
 
@@ -151,7 +141,6 @@ func CheckSystemLoad(logger zerolog.Logger) {
 
 		err = lib.CreateRedmineIssue(issue)
 	} else {
-		var lastAlarm lib.ZulipAlarm
 		var lastIssue lib.Issue
 
 		err := lib.DB.
@@ -169,15 +158,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			return
 		}
 
-		err = lib.DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				lib.GlobalConfig.ProjectIdentifier,
-				lib.GlobalConfig.Hostname,
-				pluginName,
-				moduleName).
-			Order("id DESC").
-			Limit(1).
-			Find(&lastAlarm).Error
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 		if err != nil {
 			lib.Logger.Error().Err(err).Msg("Failed to get last alarm from database")
@@ -205,18 +186,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 		}
 
 		if lastAlarm.Status == down {
-			err := lib.SendZulipAlarm(alarmMessage, &pluginName, &moduleName, &up)
-			if err == nil {
-				lib.DB.Create(&lib.ZulipAlarm{
-					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-					Hostname:          lib.GlobalConfig.Hostname,
-					Content:           alarmMessage,
-					Service:           pluginName,
-					Module:            moduleName,
-					Status:            up,
-				})
-			}
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
 	}
-
 }
