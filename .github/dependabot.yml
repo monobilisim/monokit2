@@ -17,3 +17,21 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+
+  - package-ecosystem: "gomod"
+    directory: "/plugins/osHealth"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "gomod"
+    directory: "/plugins/osHealth/vlib"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "gomod"
+    directory: "/plugins/ufwApply"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
