@@ -14,6 +14,7 @@ import (
 
 func CheckSystemDiskZFS(logger zerolog.Logger) {
 	var moduleName string
+	var issueSubject string
 
 	_, err := exec.LookPath("zpool")
 	if err != nil {
@@ -83,6 +84,7 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 	}
 
 	moduleName = "zfsHealth"
+	issueSubject = fmt.Sprintf("%s için ZFS pool(lar) sağlıklı değil", lib.GlobalConfig.Hostname)
 	// one or more pools are not healthy
 	if len(unhealthyPools) > 0 {
 		tableHeaders := []string{"NAME", "HEALTH"}
@@ -97,11 +99,47 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 		alarmMessage := fmt.Sprintf("[%s] - %s - One or more ZFS pools are not healthy:\n\n", pluginName, lib.GlobalConfig.Hostname)
 		alarmMessage += table
 
+		// Zulip alarm
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		// Redmine issue
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		var issue lib.Issue
+
+		if lastIssue.Status == up {
+			issue = lib.Issue{
+				Subject:    issueSubject,
+				Notes:      fmt.Sprintf("Sorun devam ediyor.\n\n%s", table),
+				StatusId:   lib.IssueStatus.Feedback,
+				PriorityId: lib.IssuePriority.Urgent,
+				Service:    pluginName,
+				Module:     moduleName,
+				Status:     down,
+			}
+		} else {
+			issue = lib.Issue{
+				Subject:     issueSubject,
+				Description: fmt.Sprintf("%s", table),
+				StatusId:    lib.IssueStatus.Feedback,
+				PriorityId:  lib.IssuePriority.Urgent,
+				Service:     pluginName,
+				Module:      moduleName,
+				Status:      down,
+			}
+		}
+
+		lib.CreateRedmineIssue(issue)
 	}
 
 	// all pools are healthy now
 	if len(unhealthyPools) == 0 {
+		// Zulip alarm
 		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 		if err != nil {
@@ -114,9 +152,34 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 
 			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
+
+		// Redmine issue
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		var issue lib.Issue
+
+		if lastIssue.Status == down {
+			issue = lib.Issue{
+				Subject:     issueSubject,
+				Description: fmt.Sprintf("%s için tüm ZFS poolları sağlıklı durumda.", lib.GlobalConfig.Hostname),
+				StatusId:    lib.IssueStatus.Resolved,
+				PriorityId:  lib.IssuePriority.Urgent,
+				Service:     pluginName,
+				Module:      moduleName,
+				Status:      down,
+			}
+		}
+
+		lib.CreateRedmineIssue(issue)
 	}
 
 	moduleName = "zfsCapacity"
+	issueSubject = fmt.Sprintf("%s için ZFS dataset doluluk seviyesi %d%% üstüne çıktı", lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit)
 	if len(limitExceededPools) > 0 {
 		tableHeaders := []string{"NAME", "CAPACITY"}
 		tableValues := [][]string{}
@@ -130,10 +193,46 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 		alarmMessage := fmt.Sprintf("[%s] - %s - One or more ZFS pools have exceeded capacity limit of %d%%:\n\n", pluginName, lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit)
 		alarmMessage += table
 
+		// Zulip alarm
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		// Redmine issue
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		var issue lib.Issue
+
+		if lastIssue.Status == up {
+			issue = lib.Issue{
+				Subject:    issueSubject,
+				Notes:      fmt.Sprintf("Sorun devam ediyor.\n\n%s", table),
+				StatusId:   lib.IssueStatus.Feedback,
+				PriorityId: lib.IssuePriority.Urgent,
+				Service:    pluginName,
+				Module:     moduleName,
+				Status:     down,
+			}
+		} else {
+			issue = lib.Issue{
+				Subject:     issueSubject,
+				Description: fmt.Sprintf("%s", table),
+				StatusId:    lib.IssueStatus.Feedback,
+				PriorityId:  lib.IssuePriority.Urgent,
+				Service:     pluginName,
+				Module:      moduleName,
+				Status:      down,
+			}
+		}
+
+		lib.CreateRedmineIssue(issue)
 	}
 
 	if len(limitExceededPools) == 0 {
+		// Zulip alarm
 		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 
 		if err != nil {
@@ -146,5 +245,29 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 
 			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
+
+		// Redmine issue
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+		if err != nil {
+			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
+			return
+		}
+
+		var issue lib.Issue
+
+		if lastIssue.Status == down {
+			issue = lib.Issue{
+				Subject:     issueSubject,
+				Description: fmt.Sprintf("%s için bütün ZFS datasetleri %d%% altına indi, kapatılıyor.", lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit),
+				StatusId:    lib.IssueStatus.Resolved,
+				PriorityId:  lib.IssuePriority.Urgent,
+				Service:     pluginName,
+				Module:      moduleName,
+				Status:      down,
+			}
+		}
+
+		lib.CreateRedmineIssue(issue)
 	}
 }

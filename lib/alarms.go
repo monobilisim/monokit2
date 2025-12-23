@@ -233,6 +233,48 @@ func CreateRedmineNews(news News) error {
 	return nil
 }
 
+func GetLastRedmineIssue(service string, module string) (Issue, error) {
+	var lastIssue Issue
+
+	err := DB.
+		Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+			GlobalConfig.ProjectIdentifier,
+			GlobalConfig.Hostname,
+			service,
+			module).
+		Order("table_id DESC").
+		Limit(1).
+		Find(&lastIssue).Error
+
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to get last issue from database")
+		return lastIssue, err
+	}
+
+	return lastIssue, nil
+}
+
+func GetLastRedmineIssues(service string, module string) ([]Issue, error) {
+	var lastIssues []Issue
+
+	err := DB.
+		Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
+			GlobalConfig.ProjectIdentifier,
+			GlobalConfig.Hostname,
+			service,
+			module).
+		Order("table_id DESC").
+		Limit(GlobalConfig.Redmine.Limit).
+		Find(&lastIssues).Error
+
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to get last issues from database")
+		return lastIssues, err
+	}
+
+	return lastIssues, nil
+}
+
 // issue.Service = plugin name, issue.Module = specific module in the plugin, issue.Status = alarm status like "up" or "down"
 //
 // service, module name and status can be nil if not applicable
@@ -269,25 +311,8 @@ func CreateRedmineIssue(issue Issue) error {
 	var err error
 
 	if issue.Service != "" {
-		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname,
-				issue.Service,
-				issue.Module).
-			Order("table_id DESC").
-			Limit(1).
-			Find(&lastIssue).Error
-
-		err = DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				GlobalConfig.ProjectIdentifier,
-				GlobalConfig.Hostname,
-				issue.Service,
-				issue.Module).
-			Order("table_id DESC").
-			Limit(GlobalConfig.Redmine.Limit).
-			Find(&lastIssues).Error
+		lastIssue, err = GetLastRedmineIssue(issue.Service, issue.Module)
+		lastIssues, err = GetLastRedmineIssues(issue.Service, issue.Module)
 	}
 
 	if issue.Service == "" {

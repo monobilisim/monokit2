@@ -94,17 +94,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 
 		err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
-		var lastIssue lib.Issue
-
-		err = lib.DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				lib.GlobalConfig.ProjectIdentifier,
-				lib.GlobalConfig.Hostname,
-				pluginName,
-				moduleName).
-			Order("table_id DESC").
-			Limit(1).
-			Find(&lastIssue).Error
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 
 		if err != nil {
 			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
@@ -141,17 +131,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 
 		err = lib.CreateRedmineIssue(issue)
 	} else {
-		var lastIssue lib.Issue
-
-		err := lib.DB.
-			Where("project_identifier = ? AND hostname = ? AND service = ? AND module = ?",
-				lib.GlobalConfig.ProjectIdentifier,
-				lib.GlobalConfig.Hostname,
-				pluginName,
-				moduleName).
-			Order("table_id DESC").
-			Limit(1).
-			Find(&lastIssue).Error
+		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 
 		if err != nil {
 			lib.Logger.Error().Err(err).Msg("Failed to get last issue from database")
