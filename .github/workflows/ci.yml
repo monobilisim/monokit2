@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Go 1.25
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.25
+
+      - name: Build binaries
+        run: |
+          mkdir -p ./bin
+
+          ACTIVE_PLUGINS=(osHealth)
+          # Always build the main devel binary
+          go build -ldflags "-X 'main.version=devel'" -o ./bin/monokit2 ./main.go
+
+          ACTIVE_PLUGINS=(osHealth)
+          # Build devel binaries for active plugins
+          for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
+            cd plugins/$PLUGIN_NAME || exit 1
+            go build -ldflags "-X 'main.version=devel'" --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}
+            cd ../..
+          done
