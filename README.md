@@ -26,5 +26,5 @@ We suggest using `monokit2 reset` to start from empty db and config files for ea
   - disk: Zulip, Redmine
   - system load: Zulip, Redmine
   - memory: Zulip
-  - zfs: Zulip
+  - zfs: Zulip, Redmine
   - systemd: Zulip
