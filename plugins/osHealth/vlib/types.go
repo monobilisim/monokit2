@@ -48,3 +48,19 @@ type AsteriskVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type FrankenPHPVersion struct {
+	FrankenPHP struct {
+		Version     string
+		VersionFull string
+	}
+	PHP struct {
+		Version     string
+		VersionFull string
+	}
+	Caddy struct {
+		Version     string
+		VersionFull string
+	}
+	VersionFull string
+}

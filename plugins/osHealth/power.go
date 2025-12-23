@@ -2,7 +2,7 @@
 
 package main
 
-func CheckSystemPowerHealth() error {
+func CheckSystemPowerHealth() {
 	// Placeholder for future implementation
-	return nil
+	return
 }
