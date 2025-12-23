@@ -66,6 +66,21 @@ func DockerCheck(logger zerolog.Logger) {
 		return
 	}
 
+	dockerJson, _ := json.Marshal(dockerVersion)
+
+	// first time record the version
+	if oldDockerVersion.Version == "" && dockerVersion.Server.Engine.Version != "" {
+		logger.Info().Str("new_version", dockerVersion.Server.Engine.Version).Msg("Docker Engine version has been recorded for the first time")
+
+		lib.DB.Model(&lib.Version{}).Where("name = ?", "Docker").Updates(lib.Version{
+			Version:      dockerVersion.Server.Engine.Version,
+			VersionMulti: string(dockerJson),
+			Status:       "installed",
+		})
+		return
+	}
+
+	// version has been changed
 	if oldDockerVersion.Version != "" && oldDockerVersion.Version != dockerVersion.Server.Engine.Version {
 		logger.Info().Str("old_version", oldDockerVersion.Version).
 			Str("new_version", dockerVersion.Server.Engine.Version).
@@ -77,8 +92,6 @@ func DockerCheck(logger zerolog.Logger) {
 		}
 
 		lib.CreateRedmineNews(news)
-
-		dockerJson, _ := json.Marshal(dockerVersion)
 
 		lib.DB.Model(&lib.Version{}).Where("name = ?", "Docker").Updates(lib.Version{
 			Version:      dockerVersion.Server.Engine.Version,

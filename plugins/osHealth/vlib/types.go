@@ -38,3 +38,8 @@ type DockerVersion struct {
 		}
 	}
 }
+
+type CaddyVersion struct {
+	Version     string
+	VersionFull string
+}
