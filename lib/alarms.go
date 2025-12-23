@@ -177,6 +177,62 @@ func sendZulipWebhookAlarm(url string, message string) error {
 	return nil
 }
 
+func CreateRedmineNews(news News) error {
+	if !GlobalConfig.Redmine.Enabled {
+		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
+		return nil
+	}
+
+	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
+		Logger.Error().Msg("Redmine API key or URL not configured")
+		return fmt.Errorf("Redmine API key or URL not configured")
+	}
+
+	newsUrl := fmt.Sprintf("%s/projects/%s/news.json", GlobalConfig.Redmine.Url, GlobalConfig.ProjectIdentifier)
+
+	redmineNews := RedmineNews{
+		News: news,
+	}
+
+	jsonBody, err := json.Marshal(redmineNews)
+	if err != nil {
+		Logger.Error().Err(err).Msg("Failed to marshal news creation request")
+		return err
+	}
+
+	req, err := http.NewRequest("POST", newsUrl, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to create news request")
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+	req.Header.Set("User-Agent", "Monokit/devel")
+
+	client := &http.Client{Timeout: time.Second * 30}
+	resp, err := client.Do(req)
+	if err != nil {
+		Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to send news request")
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to send Redmine news")
+		return fmt.Errorf("failed to send Redmine news, status code: %d", resp.StatusCode)
+	}
+
+	err = DB.Create(&news).Error
+	if err != nil {
+		Logger.Error().Err(err).Int("id", int(news.Id)).Msg("Failed to store news in local database")
+		return err
+	}
+
+	return nil
+}
+
 // issue.Service = plugin name, issue.Module = specific module in the plugin, issue.Status = alarm status like "up" or "down"
 //
 // service, module name and status can be nil if not applicable

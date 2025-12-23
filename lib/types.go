@@ -106,6 +106,24 @@ type Issue struct {
 	Module            string `gorm:"text" json:"-"` // plugin's module name
 }
 
+type RedmineIssue struct {
+	Issue Issue `json:"issue"`
+}
+
+type News struct {
+	gorm.Model
+	TableId           uint   `gorm:"primaryKey;autoIncrement"`
+	Id                int    `gorm:"int" json:"id,omitempty"`
+	Title             string `gorm:"text" json:"title,omitempty"`
+	Description       string `gorm:"text" json:"description,omitempty"`
+	ProjectIdentifier string `gorm:"text" json:"-"` // internal use
+	Hostname          string `gorm:"text" json:"-"` // internal use
+}
+
+type RedmineNews struct {
+	News News `json:"news"`
+}
+
 type Version struct {
 	gorm.Model
 	Id           uint   `gorm:"primaryKey;autoIncrement"`
@@ -113,10 +131,6 @@ type Version struct {
 	Version      string `gorm:"text" json:"version"`       // direct version
 	VersionMulti string `gorm:"text" json:"version_multi"` // version in json format for software with multiple components
 	Status       string `gorm:"text" json:"status"`        // installed, not-installed
-}
-
-type RedmineIssue struct {
-	Issue Issue `json:"issue"`
 }
 
 type SystemdUnits struct {

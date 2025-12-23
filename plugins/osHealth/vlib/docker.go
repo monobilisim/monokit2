@@ -4,6 +4,7 @@ package vlib
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -65,12 +66,17 @@ func DockerCheck(logger zerolog.Logger) {
 		return
 	}
 
-	if oldDockerVersion.Version != dockerVersion.Server.Engine.Version {
+	if oldDockerVersion.Version != "" && oldDockerVersion.Version != dockerVersion.Server.Engine.Version {
 		logger.Info().Str("old_version", oldDockerVersion.Version).
 			Str("new_version", dockerVersion.Server.Engine.Version).
 			Msg("Docker Engine version has been updated")
 
-		// TODO create redmine news
+		news := lib.News{
+			Title:       fmt.Sprintf("%s sunucusunun Docker Engine sürümü güncellendi.", lib.GlobalConfig.Hostname),
+			Description: fmt.Sprintf("%s sunucusunda Docker Engine, %s sürümünden %s sürümüne yükseltildi.", lib.GlobalConfig.Hostname, oldDockerVersion.Version, dockerVersion.Server.Engine.Version),
+		}
+
+		lib.CreateRedmineNews(news)
 
 		dockerJson, _ := json.Marshal(dockerVersion)
 

@@ -30,6 +30,8 @@ func InitializeDatabase() error {
 
 	db.AutoMigrate(&Version{})
 
+	db.AutoMigrate(&News{})
+
 	DB = db
 
 	return nil
