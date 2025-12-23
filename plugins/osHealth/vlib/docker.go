@@ -16,7 +16,6 @@ func DockerCheck(logger zerolog.Logger) {
 	var dockerVersion DockerVersion
 	var oldDockerVersion lib.Version
 
-	// Ensure docker CLI is available
 	if _, err := exec.LookPath("docker"); err != nil {
 		logger.Debug().Msg("Docker CLI not found, skipping version check")
 		return

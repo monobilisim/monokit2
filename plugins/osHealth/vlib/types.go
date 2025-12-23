@@ -43,3 +43,8 @@ type CaddyVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type AsteriskVersion struct {
+	Version     string
+	VersionFull string
+}
