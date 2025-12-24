@@ -120,6 +120,10 @@ func GetLastZulipAlarms(service string, module string) ([]ZulipAlarm, error) {
 }
 
 func sendZulipAlarm(message string) error {
+	if IsTestMode() {
+		Logger.Info().Msg("Test mode is enabled, skipping sending Zulip alarm")
+		return nil
+	}
 
 	if !GlobalConfig.ZulipAlarm.Enabled {
 		Logger.Warn().Msg("Zulip alarm is bot enabled in the configuration")
@@ -127,6 +131,11 @@ func sendZulipAlarm(message string) error {
 	}
 
 	if GlobalConfig.ZulipAlarm.BotApi.Enabled {
+		if IsTestMode() {
+			Logger.Info().Msg("Test mode is enabled, skipping sending Zulip Bot API alarm")
+			return nil
+		}
+
 		err := sendZulipBotApiAlarm(message)
 		if err != nil {
 			Logger.Error().Err(err).Msgf("failed to send Zulip Bot API alarm")
@@ -134,6 +143,11 @@ func sendZulipAlarm(message string) error {
 		}
 	} else {
 		for _, url := range GlobalConfig.ZulipAlarm.WebhookUrls {
+			if IsTestMode() {
+				Logger.Info().Str("url", url).Msgf("Test mode is enabled, skipping sending Zulip webhook alarm to %s", url)
+				return nil
+			}
+
 			err := sendZulipWebhookAlarm(url, message)
 			if err != nil {
 				Logger.Error().Err(err).Msgf("Failed to send Zulip webhook alarm to %s", url)
@@ -178,6 +192,11 @@ func sendZulipWebhookAlarm(url string, message string) error {
 }
 
 func CreateRedmineNews(news News) error {
+	if IsTestMode() {
+		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine news")
+		return nil
+	}
+
 	if !GlobalConfig.Redmine.Enabled {
 		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
 		return nil
@@ -293,6 +312,11 @@ func GetLastRedmineIssues(service string, module string) ([]Issue, error) {
 //		Status:            &down
 //	}
 func CreateRedmineIssue(issue Issue) error {
+	if IsTestMode() {
+		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine issue")
+		return nil
+	}
+
 	if !GlobalConfig.Redmine.Enabled {
 		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
 		return nil
