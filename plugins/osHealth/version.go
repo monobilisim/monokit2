@@ -9,7 +9,7 @@ import (
 )
 
 func CheckApplicationVersion(logger zerolog.Logger) {
-	versionCheck := []string{"Docker", "Caddy", "Asterisk", "FrankenPHP", "HAProxy"}
+	versionCheck := []string{"Docker", "Caddy", "Asterisk", "FrankenPHP", "HAProxy", "Jenkins"}
 	logger.Info().Msg("Starting version monitoring...")
 
 	// if version services are not installed for the applications, create empty records for them
@@ -31,4 +31,5 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	vlib.AsteriskCheck(logger)
 	vlib.FrankenPHPCheck(logger)
 	vlib.HAProxyCheck(logger)
+	vlib.JenkinsCheck(logger)
 }

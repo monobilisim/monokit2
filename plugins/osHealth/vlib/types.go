@@ -72,3 +72,8 @@ type HAProxyVersion struct {
 	RunningOn   string
 	VersionFull string
 }
+
+type JenkinsVersion struct {
+	Version     string
+	VersionFull string
+}
