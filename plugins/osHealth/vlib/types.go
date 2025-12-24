@@ -64,3 +64,11 @@ type FrankenPHPVersion struct {
 	}
 	VersionFull string
 }
+
+type HAProxyVersion struct {
+	Version     string
+	Status      string
+	KnownBugs   string
+	RunningOn   string
+	VersionFull string
+}

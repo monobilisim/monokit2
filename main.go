@@ -11,6 +11,23 @@ import (
 var version string
 
 func main() {
+	if lib.IsTestMode() {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			panic("Failed to get user home directory: " + err.Error())
+		}
+
+		err = os.Mkdir(fmt.Sprintf("%s/test", dir), os.ModePerm)
+		if err != nil {
+			panic("Failed to create test directory: " + err.Error())
+		}
+
+		err = os.MkdirAll(fmt.Sprintf("%s/.local/bin", dir), os.ModePerm)
+		if err != nil {
+			panic("Failed to create local bin directory: " + err.Error())
+		}
+	}
+
 	err := lib.InitConfig()
 	if err != nil {
 		fmt.Printf("Error initializing config: %v\n", err)
