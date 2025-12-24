@@ -57,6 +57,14 @@ func JenkinsCheck(logger zerolog.Logger) {
 
 	if oldJenkinsVersion.Version != "" && jenkinsVersion.Version != oldJenkinsVersion.Version {
 		logger.Info().Str("application", "Jenkins").Str("old_version", oldJenkinsVersion.Version).Str("new_version", jenkinsVersion.Version).Msg("Jenkins version changed")
+
+		news := lib.News{
+			Title:       fmt.Sprintf("%s sunucusunun Jenkins sürümü güncellendi.", lib.GlobalConfig.Hostname),
+			Description: fmt.Sprintf("%s sunucusunda Jenkins, %s sürümünden %s sürümüne yükseltildi.", lib.GlobalConfig.Hostname, oldJenkinsVersion.Version, jenkinsVersion.Version),
+		}
+
+		lib.CreateRedmineNews(news)
+
 		lib.DB.Model(&lib.Version{}).Where("name = ?", "Jenkins").Updates(
 			lib.Version{
 				Version:      jenkinsVersion.Version,

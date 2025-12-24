@@ -77,3 +77,17 @@ type JenkinsVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type MongoDBVersion struct {
+	Environment struct {
+		Distmod    string `json:"distmod"`
+		Distarch   string `json:"distarch"`
+		TargetArch string `json:"target_arch"`
+	} `json:"environment"`
+	Version        string   `json:"version"`
+	VersionFull    string   `json:"-"`
+	GitVersion     string   `json:"gitVersion"`
+	OpenSSLVersion string   `json:"openSSLVersion"`
+	Modules        []string `json:"modules"`
+	Allocator      string   `json:"allocator"`
+}
