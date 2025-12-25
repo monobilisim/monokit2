@@ -111,3 +111,8 @@ type OPNsenseVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type PostalVersion struct {
+	Version     string
+	VersionFull string
+}
