@@ -121,3 +121,13 @@ type PostgreSQLVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type RedisVersion struct {
+	Version     string
+	VersionFull string
+}
+
+type ValkeyVersion struct {
+	Version     string
+	VersionFull string
+}
