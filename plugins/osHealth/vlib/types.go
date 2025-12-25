@@ -101,3 +101,8 @@ type MariaDBVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type NginxVersion struct {
+	Version     string
+	VersionFull string
+}
