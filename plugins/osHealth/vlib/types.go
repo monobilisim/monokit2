@@ -116,3 +116,8 @@ type PostalVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type PostgreSQLVersion struct {
+	Version     string
+	VersionFull string
+}
