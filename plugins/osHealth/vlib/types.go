@@ -106,3 +106,8 @@ type NginxVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type OPNsenseVersion struct {
+	Version     string
+	VersionFull string
+}
