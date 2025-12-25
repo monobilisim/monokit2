@@ -91,3 +91,13 @@ type MongoDBVersion struct {
 	Modules        []string `json:"modules"`
 	Allocator      string   `json:"allocator"`
 }
+
+type MySQLVersion struct {
+	Version     string
+	VersionFull string
+}
+
+type MariaDBVersion struct {
+	Version     string
+	VersionFull string
+}
