@@ -11,7 +11,7 @@ import (
 func CheckApplicationVersion(logger zerolog.Logger) {
 	versionCheck := []string{"Docker", "Caddy", "Asterisk", "FrankenPHP", "HAProxy",
 		"Jenkins", "MongoDB", "MySQL", "MariaDB", "Nginx",
-		"OPNsense", "Postal", "PostgreSQL", "Redis"}
+		"OPNsense", "Postal", "PostgreSQL", "Redis", "Valkey"}
 	logger.Info().Msg("Starting version monitoring...")
 
 	// if version services are not installed for the applications, create empty records for them
@@ -42,4 +42,5 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	vlib.PostalCheck(logger)
 	vlib.PostgreSQLCheck(logger)
 	vlib.RedisCheck(logger)
+	vlib.ValkeyCheck(logger)
 }
