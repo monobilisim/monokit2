@@ -131,3 +131,8 @@ type ValkeyVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type VaultVersion struct {
+	Version     string
+	VersionFull string
+}
