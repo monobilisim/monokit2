@@ -19,7 +19,6 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 	_, err := exec.LookPath("zpool")
 	if err != nil {
 		logger.Error().Err(err).Msg("zpool command not found")
-		fmt.Println("zpool command not found")
 		return
 	}
 
@@ -171,7 +170,7 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 				PriorityId:  lib.IssuePriority.Urgent,
 				Service:     pluginName,
 				Module:      moduleName,
-				Status:      down,
+				Status:      up,
 			}
 		}
 
@@ -264,7 +263,7 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 				PriorityId:  lib.IssuePriority.Urgent,
 				Service:     pluginName,
 				Module:      moduleName,
-				Status:      down,
+				Status:      up,
 			}
 		}
 
