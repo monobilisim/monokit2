@@ -10,7 +10,7 @@ Do not import anything other than lib inside plugins.
 
 Zulip Alarm and Redmine Issue functions has limiting and interval checking in their own. You don't need to reimplement them just provide the necessary fields in your plugin configuration struct.
 
-Creating Zulip, Redmine alarms and News in a plugin:
+Creating Zulip, Redmine alarms in a plugin:
 
 ```go
 // Down means something bad happened like service is down
@@ -126,6 +126,17 @@ if lastIssue.Status == down {
 
 	lib.CreateRedmineIssue(issue)
 }
+```
+
+For news its easy:
+
+```go
+news := lib.News{
+	Title:       fmt.Sprintf("FrankenPHP is updated on %s.", lib.GlobalConfig.Hostname),
+	Description: fmt.Sprintf("FrankenPHP updated from %s to %s on %s.", oldFrankenPHPVersion.Version, frankenphpVersion.FrankenPHP.Version, lib.GlobalConfig.Hostname),
+}
+
+lib.CreateRedmineNews(news)
 ```
 
 Always set plugin header correctly. Example:
