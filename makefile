@@ -64,6 +64,21 @@ else
 	@scp ./plugins/bin/$(PLUGIN) $(HOST):/var/lib/monokit2/plugins/
 endif
 
+test:
+	@echo "Running tests..."
+	@./bin/monokit2 reset --force
+	@./bin/monokit2
+	@TEST=true go test
+
+	@for plugin in $(ACTIVE_PLUGINS); do \
+	    cd plugins/$$plugin; \
+		TEST=true go test -tags $$plugin; \
+		cd ../..; \
+	done;
+
+test-docker:
+	@./run-tests-docker.sh
+
 clean:
 	@if [ -f ./bin/monokit2 ]; then \
 	    rm ./bin/monokit2; \

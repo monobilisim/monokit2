@@ -10,14 +10,6 @@ import (
 var DB *gorm.DB
 
 func InitializeDatabase() error {
-	if IsTestMode() {
-		err := os.MkdirAll(DbDir, os.ModePerm)
-		if err != nil {
-			Logger.Error().Err(err).Msg("Failed to create database directory")
-			return err
-		}
-	}
-
 	err := os.MkdirAll(DbDir, os.ModePerm)
 	if err != nil {
 		Logger.Error().Err(err).Msg("Failed to create database directory")

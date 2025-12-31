@@ -29,7 +29,13 @@ func SendZulipAlarm(message string, service string, module string, status string
 
 	// no extra checks needed if there are no previous alarms
 	if len(lastAlarms) == 0 {
-		sendErr := sendZulipAlarm(message)
+		var sendErr error
+
+		if !IsTestMode() {
+			sendErr = sendZulipAlarm(message)
+		} else {
+			sendErr = nil
+		}
 
 		if sendErr == nil {
 			DB.Create(&ZulipAlarm{
@@ -64,14 +70,22 @@ func SendZulipAlarm(message string, service string, module string, status string
 		return fmt.Errorf(message)
 	}
 
-	if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
-		var message string
-		message = fmt.Sprintf("Enough time is not passed since the last alarm from %s, skipping this one", service)
-		Logger.Info().Str("service", service).Msg(message)
-		return fmt.Errorf(message)
+	if !IsTestMode() {
+		if time.Since(lastAlarm.CreatedAt) < time.Duration(GlobalConfig.ZulipAlarm.Interval)*time.Minute {
+			var message string
+			message = fmt.Sprintf("Enough time is not passed since the last alarm from %s, skipping this one", service)
+			Logger.Info().Str("service", service).Msg(message)
+			return fmt.Errorf(message)
+		}
 	}
 
-	sendErr := sendZulipAlarm(message)
+	var sendErr error
+	if !IsTestMode() {
+		sendErr = sendZulipAlarm(message)
+	} else {
+		Logger.Info().Msg("Test mode is enabled, skipping sending Zulip alarm")
+		sendErr = nil
+	}
 
 	if sendErr == nil {
 		DB.Create(&ZulipAlarm{
@@ -120,11 +134,6 @@ func GetLastZulipAlarms(service string, module string) ([]ZulipAlarm, error) {
 }
 
 func sendZulipAlarm(message string) error {
-	if IsTestMode() {
-		Logger.Info().Msg("Test mode is enabled, skipping sending Zulip alarm")
-		return nil
-	}
-
 	if !GlobalConfig.ZulipAlarm.Enabled {
 		Logger.Warn().Msg("Zulip alarm is bot enabled in the configuration")
 		return fmt.Errorf("zulip alarm not enabled")
@@ -143,11 +152,6 @@ func sendZulipAlarm(message string) error {
 		}
 	} else {
 		for _, url := range GlobalConfig.ZulipAlarm.WebhookUrls {
-			if IsTestMode() {
-				Logger.Info().Str("url", url).Msgf("Test mode is enabled, skipping sending Zulip webhook alarm to %s", url)
-				return nil
-			}
-
 			err := sendZulipWebhookAlarm(url, message)
 			if err != nil {
 				Logger.Error().Err(err).Msgf("Failed to send Zulip webhook alarm to %s", url)
@@ -194,6 +198,13 @@ func sendZulipWebhookAlarm(url string, message string) error {
 func CreateRedmineNews(news News) error {
 	if IsTestMode() {
 		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine news")
+
+		err := DB.Create(&news).Error
+		if err != nil {
+			Logger.Error().Err(err).Int("id", int(news.Id)).Msg("Failed to store news in local database")
+			return err
+		}
+
 		return nil
 	}
 

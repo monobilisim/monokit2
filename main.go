@@ -66,9 +66,8 @@ func main() {
 			return
 		}
 
-		if os.Args[1] == "reset" || os.Args[1] == "reset --force" {
-
-			if os.Args[1] == "reset" {
+		if os.Args[1] == "reset" {
+			if len(os.Args) == 2 {
 				fmt.Println("You are going to delete monokit2's database and logs. Are you sure? (y/n)")
 				var response string
 				fmt.Scanln(&response)
@@ -88,7 +87,7 @@ func main() {
 				}
 			}
 
-			if os.Args[1] == "reset --force" {
+			if os.Args[2] == "--force" {
 				if err := os.Remove(lib.GlobalConfig.SqliteLocation); err != nil {
 					fmt.Printf("Error deleting database: %v\n", err)
 					return
