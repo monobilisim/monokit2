@@ -22,12 +22,7 @@ var down string = "down"
 var configFiles []string = []string{"ufw.yml"}
 
 func main() {
-	if len(os.Args) > 1 {
-		if os.Args[1] == "--version" || os.Args[1] == "-v" || os.Args[1] == "version" || os.Args[1] == "v" {
-			fmt.Printf(version)
-			return
-		}
-	}
+	lib.HandleCommonPluginArgs(os.Args, version, configFiles)
 
 	lib.InitConfig(configFiles...)
 
