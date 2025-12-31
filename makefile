@@ -77,7 +77,7 @@ test:
 	done;
 
 test-docker:
-	@./run-tests-docker.sh
+	@docker build -t tests . && docker run --rm tests
 
 clean:
 	@if [ -f ./bin/monokit2 ]; then \
