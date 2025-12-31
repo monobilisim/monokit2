@@ -11,7 +11,5 @@ ENV CGO_ENABLED=1
 
 RUN mkdir -p /etc/mono
 RUN cp config/* /etc/mono
-# Only compile monokit2 for database creation
-RUN make build
 
 CMD [ "make", "test" ]

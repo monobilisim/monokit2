@@ -58,13 +58,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
-      - name: Set up Go 1.25
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.25
-
-      - name: Run tests
-        run: make test
+      - name: Run Docker tests
+        run: make test-docker
 
   release:
     needs: build
