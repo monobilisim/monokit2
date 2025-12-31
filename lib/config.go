@@ -1,8 +1,10 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,7 +17,7 @@ var GlobalConfig GlobalConfigType
 var OsHealthConfig OsHealthConfigType
 var UfwApplyConfig UfwApplyConfigType
 
-func InitConfig() error {
+func InitConfig(configFiles ...string) error {
 	if _, err := os.Stat("/etc/mono"); os.IsNotExist(err) {
 		err := os.MkdirAll("/etc/mono", 0755)
 		if err != nil {
@@ -50,43 +52,96 @@ func InitConfig() error {
 
 	PluginsDir = GlobalConfig.PluginsLocation
 
-	osHealthConfigExists := false
-	if _, err := os.Stat("/etc/mono/os.yml"); err == nil {
-		osHealthConfigExists = true
-	} else {
-		return fmt.Errorf("os configuration file does not exist")
-	}
+	for _, configFile := range configFiles {
+		switch configFile {
+		case "os.yml":
+			osHealthConfigExists := false
+			if _, err := os.Stat("/etc/mono/os.yml"); err == nil {
+				osHealthConfigExists = true
+			} else {
+				return fmt.Errorf("os configuration file does not exist")
+			}
 
-	if osHealthConfigExists {
-		osHealthConfigData, err := os.ReadFile("/etc/mono/os.yml")
-		if err != nil {
-			return fmt.Errorf("failed to read os configuration file: %w", err)
-		}
+			if osHealthConfigExists {
+				osHealthConfigData, err := os.ReadFile("/etc/mono/os.yml")
+				if err != nil {
+					return fmt.Errorf("failed to read os configuration file: %w", err)
+				}
 
-		err = yaml.Unmarshal(osHealthConfigData, &OsHealthConfig)
-		if err != nil {
-			return fmt.Errorf("failed to parse os configuration file: %w", err)
-		}
-	}
+				err = yaml.Unmarshal(osHealthConfigData, &OsHealthConfig)
+				if err != nil {
+					return fmt.Errorf("failed to parse os configuration file: %w", err)
+				}
+			}
+		case "ufw.yml":
+			ufwApplyConfigExists := false
+			if _, err := os.Stat("/etc/mono/ufw.yml"); err == nil {
+				ufwApplyConfigExists = true
+			} else {
+				return fmt.Errorf("ufw configuration file does not exist")
+			}
 
-	ufwApplyConfigExists := false
-	if _, err := os.Stat("/etc/mono/ufw.yml"); err == nil {
-		ufwApplyConfigExists = true
-	} else {
-		return fmt.Errorf("ufw configuration file does not exist")
-	}
+			if ufwApplyConfigExists {
+				ufwApplyConfigData, err := os.ReadFile("/etc/mono/ufw.yml")
+				if err != nil {
+					return fmt.Errorf("failed to read ufw configuration file: %w", err)
+				}
 
-	if ufwApplyConfigExists {
-		ufwApplyConfigData, err := os.ReadFile("/etc/mono/ufw.yml")
-		if err != nil {
-			return fmt.Errorf("failed to read ufw configuration file: %w", err)
-		}
-
-		err = yaml.Unmarshal(ufwApplyConfigData, &UfwApplyConfig)
-		if err != nil {
-			return fmt.Errorf("failed to parse ufw configuration file: %w", err)
+				err = yaml.Unmarshal(ufwApplyConfigData, &UfwApplyConfig)
+				if err != nil {
+					return fmt.Errorf("failed to parse ufw configuration file: %w", err)
+				}
+			}
 		}
 	}
 
 	return nil
+}
+
+func CheckPluginDependencies() []string {
+	var missingDependencies []string
+
+	files, err := os.ReadDir(PluginsDir)
+	if err != nil {
+		return []string{fmt.Sprintf("Failed to read plugins directory: %s", err.Error())}
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		pluginName := file.Name()
+		pluginPath := fmt.Sprintf("%s/%s", PluginsDir, pluginName)
+
+		// Check if file is executable
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+		if info.Mode()&0111 == 0 {
+			continue
+		}
+
+		// Run plugin with -d flag
+		cmd := exec.Command(pluginPath, "-d")
+		output, err := cmd.Output()
+		if err != nil {
+			continue
+		}
+
+		var deps Dependencies
+		if err := json.Unmarshal(output, &deps); err != nil {
+			continue
+		}
+
+		for _, configFile := range deps.ConfigFiles {
+			configPath := fmt.Sprintf("/etc/mono/%s", configFile)
+			if _, err := os.Stat(configPath); os.IsNotExist(err) {
+				missingDependencies = append(missingDependencies, fmt.Sprintf("%s config is absent, requester: %s", configFile, pluginName))
+			}
+		}
+	}
+
+	return missingDependencies
 }

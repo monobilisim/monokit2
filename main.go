@@ -11,6 +11,8 @@ import (
 var version string
 
 func main() {
+	lib.HandleCommonPluginArgs(os.Args, version, []string{})
+
 	if lib.IsTestMode() {
 		dir, err := os.UserHomeDir()
 		if err != nil {
@@ -31,6 +33,14 @@ func main() {
 	err := lib.InitConfig()
 	if err != nil {
 		fmt.Printf("Error initializing config: %v\n", err)
+	}
+
+	missingPlugins := lib.CheckPluginDependencies()
+	if len(missingPlugins) > 0 {
+		fmt.Println("The following plugins are missing dependencies and may not work correctly:")
+		for _, plugin := range missingPlugins {
+			fmt.Printf("- %s\n", plugin)
+		}
 	}
 
 	err = os.MkdirAll(lib.LogDir, os.ModePerm)
@@ -97,8 +107,13 @@ func main() {
 	}
 
 	if len(os.Args) > 1 {
-		if os.Args[1] == "--version" || os.Args[1] == "-v" || os.Args[1] == "version" || os.Args[1] == "v" {
-			fmt.Printf(version)
+		switch os.Args[1] {
+		case "-i", "--interactive", "interactive", "i", "tui":
+			if err := lib.RunTUI(version); err != nil {
+				fmt.Printf("Error running TUI: %v\n", err)
+				os.Exit(1)
+			}
+		default:
 			return
 		}
 
@@ -116,8 +131,4 @@ func main() {
 		return
 	}
 
-	if err := lib.RunTUI(version); err != nil {
-		fmt.Printf("Error running TUI: %v\n", err)
-		os.Exit(1)
-	}
 }

@@ -23,7 +23,10 @@ func main() {
 		return
 	}
 
-	lib.InitConfig()
+	err := lib.InitConfig(configFiles...)
+	if err != nil {
+		panic("Failed to initialize config: " + err.Error())
+	}
 
 	logger, err := lib.InitLogger()
 	if err != nil {

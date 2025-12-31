@@ -19,6 +19,7 @@ var version string
 var pluginName string = "ufwApply"
 var up string = "up"
 var down string = "down"
+var configFiles []string = []string{"ufw.yml"}
 
 func main() {
 	if len(os.Args) > 1 {
@@ -28,7 +29,7 @@ func main() {
 		}
 	}
 
-	lib.InitConfig()
+	lib.InitConfig(configFiles...)
 
 	logger, err := lib.InitLogger()
 	if err != nil {
