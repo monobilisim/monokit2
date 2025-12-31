@@ -48,8 +48,24 @@ func main() {
 		panic("Failed to create log directory: " + err.Error())
 	}
 
+	if len(os.Args) == 1 {
+		fmt.Println("Monokit2 - A modular system monitoring and management tool")
+		fmt.Println("Use 'monokit2 --help' for more information.")
+	}
+
 	// reset command to delete database and logs before database init so no schema issues
 	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--help", "-h", "help", "h":
+			fmt.Println("Usage: monokit2 [command] [options]")
+			fmt.Println("reset               Delete monokit2's database and logs, --force is for without confirmation")
+			fmt.Println("-i, --interactive   Launch the interactive TUI interface")
+			fmt.Println("-v, --version       Display the current version of monokit2")
+			fmt.Println("-d, --dependencies  List configuration file dependencies")
+			fmt.Println("Usage: monokit2 [pluginName] [pluginOptions]")
+			return
+		}
+
 		if os.Args[1] == "reset" || os.Args[1] == "reset --force" {
 
 			if os.Args[1] == "reset" {
