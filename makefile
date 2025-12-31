@@ -66,6 +66,9 @@ endif
 
 test:
 	@echo "Running tests..."
+	@if [ ! -f ./bin/monokit2 ]; then \
+        make build; \
+    fi
 	@./bin/monokit2 reset --force
 	@./bin/monokit2
 	@TEST=true go test
