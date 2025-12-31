@@ -4,7 +4,7 @@ Monokit2 is a monitoring and alerting system that supports various plugins for m
 
 It is designed to be extensible, allowing users to add new plugins as needed.
 
-[Plugin development for Monokit2](https://github.com/monobilisim/monokit2/blob/main/plugin-development.md)
+[Plugin development for Monokit2](https://github.com/monobilisim/monokit2/blob/main/PLUGIN-DEVELOPMENT.md)
 
 ## Installation
 The project is in beta state and installation instructions will be provided soon.
