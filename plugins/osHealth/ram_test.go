@@ -4,7 +4,9 @@ package main
 
 import (
 	"runtime"
+	"runtime/debug"
 	"testing"
+	"time"
 
 	lib "github.com/monobilisim/monokit2/lib"
 	"github.com/shirou/gopsutil/v4/mem"
@@ -38,6 +40,7 @@ func fillRam(t *testing.T, targetPercent float64) func() {
 	return func() {
 		chunks = nil
 		runtime.GC()
+		debug.FreeOSMemory()
 	}
 }
 
@@ -64,6 +67,29 @@ func TestCheckSystemRAM(t *testing.T) {
 	}
 
 	cleanup() // Free up RAM
+
+	// Wait for RAM to drop below limit
+	limit := float64(lib.OsHealthConfig.RamUsageAlarm.Limit)
+	timeout := time.After(10 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+WaitForRam:
+	for {
+		select {
+		case <-timeout:
+			t.Log("Timeout waiting for RAM to drop")
+			break WaitForRam
+		case <-ticker.C:
+			v, err := mem.VirtualMemory()
+			if err == nil {
+				used := float64(v.Total-v.Available) / float64(v.Total) * 100
+				if used < limit {
+					break WaitForRam
+				}
+			}
+		}
+	}
 
 	CheckSystemRAM(lib.Logger)
 

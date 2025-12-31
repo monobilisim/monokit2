@@ -67,6 +67,21 @@ func main() {
 		}
 
 		if os.Args[1] == "reset" {
+			var SqliteExists bool
+			var LogfileExists bool
+
+			if _, err := os.Stat(lib.GlobalConfig.SqliteLocation); err == nil {
+				SqliteExists = true
+			}
+
+			if _, err := os.Stat(lib.GlobalConfig.LogLocation); err == nil {
+				LogfileExists = true
+			}
+
+			if !SqliteExists && !LogfileExists {
+				return
+			}
+
 			if len(os.Args) == 2 {
 				fmt.Println("You are going to delete monokit2's database and logs. Are you sure? (y/n)")
 				var response string

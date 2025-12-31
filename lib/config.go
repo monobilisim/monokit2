@@ -101,6 +101,13 @@ func InitConfig(configFiles ...string) error {
 func CheckPluginDependencies() []string {
 	var missingDependencies []string
 
+	if _, err := os.Stat(PluginsDir); os.IsNotExist(err) {
+		err := os.MkdirAll(PluginsDir, 0755)
+		if err != nil {
+			return []string{fmt.Sprintf("Failed to create plugins directory: %s", err.Error())}
+		}
+	}
+
 	files, err := os.ReadDir(PluginsDir)
 	if err != nil {
 		return []string{fmt.Sprintf("Failed to read plugins directory: %s", err.Error())}
