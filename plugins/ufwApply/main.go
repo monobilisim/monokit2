@@ -156,21 +156,43 @@ func main() {
 		return
 	}
 
-	var lastAlarm lib.ZulipAlarm
-
-	err = lib.DB.Where("service = ? AND module = ?",
-		pluginName,
-		moduleName).Order("id DESC").First(&lastAlarm).Error
-
-	if err == nil && lastAlarm.Status == down {
-		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW rules applied successfully after previous failure", lib.GlobalConfig.Hostname)
-
-		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
-	} else {
+	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err != nil {
 		logger.Error().Err(err).Msg("Failed to get last dry run alarm from database")
 		return
 	}
 
+	if lastAlarm.Status == down {
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW dry run successfully after previous failure", lib.GlobalConfig.Hostname)
+
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
+
+	moduleName = "apply"
+	err = UfwApply(logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to apply ufw rules")
+
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to apply ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
+
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		return
+	}
+
+	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get last apply alarm from database")
+		return
+	}
+
+	if lastAlarm.Status == down {
+		logger.Info().Msg("UFW apply succeeded after previous failure")
+
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW apply successfully after previous failure", lib.GlobalConfig.Hostname)
+
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
 }
 
 func UfwApply(logger zerolog.Logger) error {
