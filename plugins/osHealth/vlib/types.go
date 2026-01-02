@@ -281,3 +281,8 @@ type PVEVersion struct {
 	VersionFull string
 	Type        string
 }
+
+type ZimbraVersion struct {
+	Version     string
+	VersionFull string
+}

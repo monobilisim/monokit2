@@ -13,7 +13,7 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 		"Jenkins", "MongoDB", "MySQL", "MariaDB", "Nginx",
 		"OPNsense", "Postal", "PostgreSQL", "Redis", "Valkey",
 		"Vault", "RabbitMQ", "Prometheus", "Zabbix", "PVE",
-		"PMG", "PBS"}
+		"PMG", "PBS", "Zimbra"}
 
 	logger.Info().Msg("Starting version monitoring...")
 
@@ -53,4 +53,5 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	vlib.ProxmoxVECheck(logger)
 	vlib.ProxmoxMGCheck(logger)
 	vlib.ProxmoxBSCheck(logger)
+	vlib.ZimbraCheck(logger)
 }
