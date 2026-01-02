@@ -260,3 +260,13 @@ type Totals struct {
 	ConnectionCount  int `json:"connection_count"`
 	QueueCount       int `json:"queue_count"`
 }
+
+type PrometheusVersion struct {
+	Version     string
+	BuildUser   string
+	BuildDate   string
+	GoVersion   string
+	Platform    string
+	Tags        []string
+	VersionFull string
+}
