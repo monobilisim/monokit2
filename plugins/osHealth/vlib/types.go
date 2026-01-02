@@ -270,3 +270,8 @@ type PrometheusVersion struct {
 	Tags        []string
 	VersionFull string
 }
+
+type ZabbixVersion struct {
+	Version     string
+	VersionFull string
+}
