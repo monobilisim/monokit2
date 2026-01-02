@@ -12,7 +12,8 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	versionCheck := []string{"Docker", "Caddy", "Asterisk", "FrankenPHP", "HAProxy",
 		"Jenkins", "MongoDB", "MySQL", "MariaDB", "Nginx",
 		"OPNsense", "Postal", "PostgreSQL", "Redis", "Valkey",
-		"Vault", "RabbitMQ", "Prometheus", "Zabbix"}
+		"Vault", "RabbitMQ", "Prometheus", "Zabbix", "PVE",
+		"PMG", "PBS"}
 
 	logger.Info().Msg("Starting version monitoring...")
 
@@ -49,4 +50,7 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	vlib.RabbitMQCheck(logger)
 	vlib.PrometheusCheck(logger)
 	vlib.ZabbixCheck(logger)
+	vlib.ProxmoxVECheck(logger)
+	vlib.ProxmoxMGCheck(logger)
+	vlib.ProxmoxBSCheck(logger)
 }

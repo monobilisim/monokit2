@@ -12,8 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// PostalCheck detects Postal version and records updates.
-// Tries `postal version` first; falls back to reading running container image tags via `docker ps`.
 func PostalCheck(logger zerolog.Logger) {
 	var postalVersion PostalVersion
 	var oldPostalVersion lib.Version

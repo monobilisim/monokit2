@@ -12,7 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// HAProxyCheck detects the installed HAProxy version and reports updates.
 func HAProxyCheck(logger zerolog.Logger) {
 	var haproxyVersion HAProxyVersion
 	var oldHAProxyVersion lib.Version

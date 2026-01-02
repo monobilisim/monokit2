@@ -275,3 +275,9 @@ type ZabbixVersion struct {
 	Version     string
 	VersionFull string
 }
+
+type PVEVersion struct {
+	Version     string
+	VersionFull string
+	Type        string
+}
