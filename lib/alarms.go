@@ -204,60 +204,60 @@ func CreateRedmineNews(news News) error {
 			Logger.Error().Err(err).Int("id", int(news.Id)).Msg("Failed to store news in local database")
 			return err
 		}
-
-		return nil
 	}
 
-	if !GlobalConfig.Redmine.Enabled {
-		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
-		return nil
-	}
+	if !IsTestMode() {
+		if !GlobalConfig.Redmine.Enabled {
+			Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
+			return nil
+		}
 
-	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
-		Logger.Error().Msg("Redmine API key or URL not configured")
-		return fmt.Errorf("Redmine API key or URL not configured")
-	}
+		if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
+			Logger.Error().Msg("Redmine API key or URL not configured")
+			return fmt.Errorf("Redmine API key or URL not configured")
+		}
 
-	newsUrl := fmt.Sprintf("%s/projects/%s/news.json", GlobalConfig.Redmine.Url, GlobalConfig.ProjectIdentifier)
+		newsUrl := fmt.Sprintf("%s/projects/%s/news.json", GlobalConfig.Redmine.Url, GlobalConfig.ProjectIdentifier)
 
-	redmineNews := RedmineNews{
-		News: news,
-	}
+		redmineNews := RedmineNews{
+			News: news,
+		}
 
-	jsonBody, err := json.Marshal(redmineNews)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to marshal news creation request")
-		return err
-	}
+		jsonBody, err := json.Marshal(redmineNews)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to marshal news creation request")
+			return err
+		}
 
-	req, err := http.NewRequest("POST", newsUrl, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to create news request")
-		return err
-	}
+		req, err := http.NewRequest("POST", newsUrl, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to create news request")
+			return err
+		}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
-	req.Header.Set("User-Agent", "Monokit/devel")
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+		req.Header.Set("User-Agent", "Monokit/devel")
 
-	client := &http.Client{Timeout: time.Second * 30}
-	resp, err := client.Do(req)
-	if err != nil {
-		Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to send news request")
-		return err
-	}
-	defer resp.Body.Close()
+		client := &http.Client{Timeout: time.Second * 30}
+		resp, err := client.Do(req)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", newsUrl).Msg("Failed to send news request")
+			return err
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to send Redmine news")
-		return fmt.Errorf("failed to send Redmine news, status code: %d", resp.StatusCode)
-	}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to send Redmine news")
+			return fmt.Errorf("failed to send Redmine news, status code: %d", resp.StatusCode)
+		}
 
-	err = DB.Create(&news).Error
-	if err != nil {
-		Logger.Error().Err(err).Int("id", int(news.Id)).Msg("Failed to store news in local database")
-		return err
+		err = DB.Create(&news).Error
+		if err != nil {
+			Logger.Error().Err(err).Int("id", int(news.Id)).Msg("Failed to store news in local database")
+			return err
+		}
 	}
 
 	return nil
@@ -323,19 +323,16 @@ func GetLastRedmineIssues(service string, module string) ([]Issue, error) {
 //		Status:            &down
 //	}
 func CreateRedmineIssue(issue Issue) error {
-	if IsTestMode() {
-		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine issue")
-		return nil
-	}
+	if !IsTestMode() {
+		if !GlobalConfig.Redmine.Enabled {
+			Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
+			return nil
+		}
 
-	if !GlobalConfig.Redmine.Enabled {
-		Logger.Warn().Msg("Redmine integration is not enabled in the configuration")
-		return nil
-	}
-
-	if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
-		Logger.Error().Msg("Redmine API key or URL not configured")
-		return fmt.Errorf("Redmine API key or URL not configured")
+		if GlobalConfig.Redmine.ApiKey == "" || GlobalConfig.Redmine.Url == "" {
+			Logger.Error().Msg("Redmine API key or URL not configured")
+			return fmt.Errorf("Redmine API key or URL not configured")
+		}
 	}
 
 	issue.ProjectIdentifier = GlobalConfig.ProjectIdentifier
@@ -405,16 +402,18 @@ func CreateRedmineIssue(issue Issue) error {
 		return fmt.Errorf(message)
 	}
 
-	if time.Since(lastIssue.CreatedAt) < time.Duration(GlobalConfig.Redmine.Interval)*time.Minute {
-		var message string
-		if issue.Service != "" {
-			message = fmt.Sprintf("Enough time is not passed since the last Issue from %s, skipping this one", issue.Service)
-			Logger.Info().Str("service", issue.Service).Msg(message)
-		} else {
-			message = "Enough time is not passed since the last issue, skipping this one"
-			Logger.Info().Msg(message)
+	if !IsTestMode() {
+		if time.Since(lastIssue.CreatedAt) < time.Duration(GlobalConfig.Redmine.Interval)*time.Minute {
+			var message string
+			if issue.Service != "" {
+				message = fmt.Sprintf("Enough time is not passed since the last Issue from %s, skipping this one", issue.Service)
+				Logger.Info().Str("service", issue.Service).Msg(message)
+			} else {
+				message = "Enough time is not passed since the last issue, skipping this one"
+				Logger.Info().Msg(message)
+			}
+			return fmt.Errorf(message)
 		}
-		return fmt.Errorf(message)
 	}
 
 	if lastIssue.Status == issue.Status {
@@ -424,7 +423,7 @@ func CreateRedmineIssue(issue Issue) error {
 
 	// if the new issue has a different status than the last issue, update the status of the last issue
 	if lastIssue.Status != issue.Status {
-		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
+		existingIssue := findRecentSimilarIssue(issue.Service, issue.Module, 6)
 		if existingIssue != nil {
 			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, updating status instead of creating new one")
 			issue.Id = existingIssue.Id
@@ -435,7 +434,7 @@ func CreateRedmineIssue(issue Issue) error {
 	// if the new issue is "down" type and the last issue is "up" type too, then instead of creating a new issue, reopen the existing one
 	// find if there is an existing issue with the same subject in the last 6 hours
 	if issue.Status == "down" && lastIssue.Status == "up" {
-		existingIssue := findRecentSimilarIssue(issue.Subject, 6)
+		existingIssue := findRecentSimilarIssue(issue.Service, issue.Module, 6)
 		if existingIssue != nil {
 			Logger.Info().Int("existing_issue_id", existingIssue.Id).Str("subject", issue.Subject).Msg("Found existing issue, reopening instead of creating new one")
 			issue.Id = existingIssue.Id
@@ -447,12 +446,12 @@ func CreateRedmineIssue(issue Issue) error {
 	return createNewRedmineIssue(issue)
 }
 
-func findRecentSimilarIssue(subject string, hoursBack int) *Issue {
+func findRecentSimilarIssue(serviceName string, moduleName string, hoursBack int) *Issue {
 	now := time.Now()
 	hoursAgo := now.Add(-time.Duration(hoursBack) * time.Hour)
 
 	var existingIssues []Issue
-	result := DB.Where("subject = ? AND created_at > ?", subject, hoursAgo).Order("id DESC").Find(&existingIssues)
+	result := DB.Where("service = ? AND module = ? AND created_at > ?", serviceName, moduleName, hoursAgo).Order("id DESC").Find(&existingIssues)
 	if result.Error != nil {
 		Logger.Error().Err(result.Error).Msg("Failed to query database for existing issues")
 		return nil
@@ -467,45 +466,58 @@ func findRecentSimilarIssue(subject string, hoursBack int) *Issue {
 }
 
 func updateRedmineIssueStatus(issueId int, issue Issue) error {
-	updateData := map[string]interface{}{
-		"issue": map[string]interface{}{
-			"status_id": issue.StatusId,
-			"notes":     issue.Notes,
-		},
+	if IsTestMode() {
+		Logger.Info().Msg("Test mode is enabled, skipping updating Redmine issue status")
+
+		issueId = issue.Id
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+			return result.Error
+		}
 	}
 
-	jsonBody, err := json.Marshal(updateData)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to marshal issue update request")
-	}
-	updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
-	req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to create issue update request")
-		return err
-	}
+	if !IsTestMode() {
+		updateData := map[string]interface{}{
+			"issue": map[string]interface{}{
+				"status_id": issue.StatusId,
+				"notes":     issue.Notes,
+			},
+		}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
-	req.Header.Set("User-Agent", "Monokit/devel")
+		jsonBody, err := json.Marshal(updateData)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to marshal issue update request")
+		}
+		updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
+		req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to create issue update request")
+			return err
+		}
 
-	client := &http.Client{Timeout: time.Second * 30}
-	resp, err := client.Do(req)
-	if err != nil {
-		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
-		return err
-	}
-	defer resp.Body.Close()
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+		req.Header.Set("User-Agent", "Monokit/devel")
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
-		return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
-	}
+		client := &http.Client{Timeout: time.Second * 30}
+		resp, err := client.Do(req)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
+			return err
+		}
+		defer resp.Body.Close()
 
-	result := DB.Create(&issue)
-	if result.Error != nil {
-		Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
+			return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
+		}
+
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		}
 	}
 
 	Logger.Info().Int("issue_id", issueId).Int("status_id", issue.StatusId).Msg("Successfully updated Redmine issue status")
@@ -519,40 +531,49 @@ func reopenRedmineIssue(issueId int, issue Issue) error {
 		},
 	}
 
-	jsonBody, err := json.Marshal(updateData)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to marshal issue update request")
-		return err
+	if IsTestMode() {
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		}
 	}
 
-	updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
-	req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to create issue update request")
-		return err
-	}
+	if !IsTestMode() {
+		jsonBody, err := json.Marshal(updateData)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to marshal issue update request")
+			return err
+		}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
-	req.Header.Set("User-Agent", "Monokit/devel")
+		updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
+		req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to create issue update request")
+			return err
+		}
 
-	client := &http.Client{Timeout: time.Second * 30}
-	resp, err := client.Do(req)
-	if err != nil {
-		Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
-		return err
-	}
-	defer resp.Body.Close()
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+		req.Header.Set("User-Agent", "Monokit/devel")
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
-		return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
-	}
+		client := &http.Client{Timeout: time.Second * 30}
+		resp, err := client.Do(req)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
+			return err
+		}
+		defer resp.Body.Close()
 
-	result := DB.Create(&issue)
-	if result.Error != nil {
-		Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to update Redmine issue")
+			return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
+		}
+
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		}
 	}
 
 	Logger.Info().Int("issue_id", issueId).Msg("Successfully reopened Redmine issue")
@@ -571,62 +592,81 @@ func createNewRedmineIssue(issue Issue) error {
 		},
 	}
 
-	jsonBody, err := json.Marshal(createData)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to marshal issue creation request")
-		return err
+	if IsTestMode() {
+		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine issue")
+
+		var lastIssueId int
+
+		err := DB.Model(&Issue{}).Select("MAX(id)").Row().Scan(&lastIssueId)
+		if err != nil {
+			lastIssueId = 1
+		}
+
+		issue.Id = lastIssueId + 1
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		}
 	}
 
-	createUrl := GlobalConfig.Redmine.Url + "/issues.json"
-	req, err := http.NewRequest("POST", createUrl, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		Logger.Error().Err(err).Str("url", createUrl).Msg("Failed to create issue creation request")
-		fmt.Println(err)
-		return err
+	if !IsTestMode() {
+		jsonBody, err := json.Marshal(createData)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to marshal issue creation request")
+			return err
+		}
+
+		createUrl := GlobalConfig.Redmine.Url + "/issues.json"
+		req, err := http.NewRequest("POST", createUrl, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			Logger.Error().Err(err).Str("url", createUrl).Msg("Failed to create issue creation request")
+			fmt.Println(err)
+			return err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+		req.Header.Set("User-Agent", "Monokit/devel")
+
+		client := &http.Client{Timeout: time.Second * 30}
+		resp, err := client.Do(req)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", createUrl).Msg("Failed to send issue creation request")
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to create Redmine issue")
+			return fmt.Errorf("failed to create issue, status code: %d", resp.StatusCode)
+		}
+
+		var response struct {
+			Issue struct {
+				Id int `json:"id"`
+			} `json:"issue"`
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to read response body")
+			return err
+		}
+
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to parse issue creation response")
+			return err
+		}
+
+		issue.Id = response.Issue.Id
+		result := DB.Create(&issue)
+		if result.Error != nil {
+			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
+		}
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
-	req.Header.Set("User-Agent", "Monokit/devel")
-
-	client := &http.Client{Timeout: time.Second * 30}
-	resp, err := client.Do(req)
-	if err != nil {
-		Logger.Error().Err(err).Str("url", createUrl).Msg("Failed to send issue creation request")
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		Logger.Error().Int("status_code", resp.StatusCode).Str("response", string(body)).Msg("Failed to create Redmine issue")
-		return fmt.Errorf("failed to create issue, status code: %d", resp.StatusCode)
-	}
-
-	var response struct {
-		Issue struct {
-			Id int `json:"id"`
-		} `json:"issue"`
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to read response body")
-		return err
-	}
-
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		Logger.Error().Err(err).Msg("Failed to parse issue creation response")
-		return err
-	}
-
-	issue.Id = response.Issue.Id
-	result := DB.Create(&issue)
-	if result.Error != nil {
-		Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
-	}
-
-	Logger.Info().Int("issue_id", response.Issue.Id).Str("subject", issue.Subject).Msg("Successfully created new Redmine issue")
+	Logger.Info().Int("issue_id", issue.Id).Str("subject", issue.Subject).Msg("Successfully created new Redmine issue")
 	return nil
 }

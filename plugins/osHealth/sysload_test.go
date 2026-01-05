@@ -101,6 +101,17 @@ WaitForLoadHigh:
 		t.Errorf("Expected alarm status '%s', got '%s'. Content: %s", down, alarm.Status, alarm.Content)
 	}
 
+	// Verify DOWN Redmine issue was created
+	issue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+	if err != nil {
+		cleanup()
+		t.Fatalf("Failed to get last Redmine issue: %v", err)
+	}
+
+	if issue.Status != down {
+		t.Errorf("Expected Redmine issue status '%s', got '%s'", down, issue.Status)
+	}
+
 	// Stop generating load
 	cleanup()
 	t.Log("Stopped generating load. Waiting for load to drop...")
@@ -109,7 +120,7 @@ WaitForLoadHigh:
 	// This can take a while as load average decays exponentially.
 	// We might increase the limit temporarily to speed up the test pass condition
 	// if the natural decay is too slow, but let's try waiting first.
-	timeout = time.After(20 * time.Second)
+	timeout = time.After(1 * time.Minute)
 	ticker = time.NewTicker(2 * time.Second)
 
 	loadLow := false
@@ -152,5 +163,15 @@ WaitForLoadLow:
 
 	if alarm.Status != up {
 		t.Errorf("Expected alarm status '%s', got '%s'. Content: %s", up, alarm.Status, alarm.Content)
+	}
+
+	// Verify UP Redmine issue was created (or updated)
+	issue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
+	if err != nil {
+		t.Fatalf("Failed to get last Redmine issue: %v", err)
+	}
+
+	if issue.Status != up {
+		t.Errorf("Expected Redmine issue status '%s', got '%s'", up, issue.Status)
 	}
 }

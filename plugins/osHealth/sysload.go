@@ -129,7 +129,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 			}
 		}
 
-		err = lib.CreateRedmineIssue(issue)
+		lib.CreateRedmineIssue(issue)
 	} else {
 		lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 
@@ -162,7 +162,7 @@ func CheckSystemLoad(logger zerolog.Logger) {
 
 			lib.Logger.Debug().Msgf("Creating Redmine issue: %+v", issue)
 
-			err = lib.CreateRedmineIssue(issue)
+			lib.CreateRedmineIssue(issue)
 		}
 
 		if lastAlarm.Status == down {
