@@ -151,6 +151,40 @@ Build plugins with this command after setting each files' header correctly:
 cd ./plugins/osHealth && go build -tags osHealth -o ../bin/
 ```
 
+Compiling with OS specific features.
+
+Without tagging OS specific code will cause build errors on unsupported OS.
+
+Heres a correct way to do it:
+
+main.go
+```go
+//go:build pluginName
+
+func main() {
+	// Your code here
+	// ...
+	// OS specific code
+  CheckBSDFeature()
+}
+```
+
+check_bsd.go
+```go
+	//go:build pluginName && freebsd
+	func CheckBSDFeature() {
+		// Your BSD specific code here
+	}
+```
+
+check_bsd_stub.go
+```go
+	//go:build pluginName && !freebsd
+	func CheckBSDFeature() {
+		return
+	}
+```
+
 While testing you can change monokit2 settings to make it work under user account without sudo permissions. Change the following settings in /etc/mono/global.yml:
 
 global.yml
@@ -160,11 +194,10 @@ sqlite-location: "/home/user/Desktop/monokit2/logs/monokit2.db"
 plugins-location: "/home/user/Desktop/monokit2/plugins/bin"
 ```
 
-After writing the plugin if you want to create devel builds of it from CI/CD you need to change the following setting in .github/workflows/release.yml:
+After writing the plugin if you want to create devel builds of it from CI/CD you need to add it to makefile ACTIVE_PLUGINS array like this:
 
-```yaml
-      - name: Build binaries
-        id: build
-        run: |
-          ACTIVE_PLUGINS=(osHealth pluginName)
+```make	
+	ACTIVE_PLUGINS := osHealth
+	# to
+  ACTIVE_PLUGINS := osHealth pluginName
 ```
