@@ -11,7 +11,7 @@ require (
 	github.com/monobilisim/monokit2 v0.0.0-00010101000000-000000000000
 	github.com/monobilisim/monokit2/plugins/osHealth/vlib v0.0.0-00010101000000-000000000000
 	github.com/rs/zerolog v1.34.0
-	github.com/shirou/gopsutil/v4 v4.25.11
+	github.com/shirou/gopsutil/v4 v4.25.12
 )
 
 require (
