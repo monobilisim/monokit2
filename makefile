@@ -8,23 +8,69 @@ VERSION ?= devel
 
 .PHONY: clean all
 
-all:
-	@echo "Building version $(VERSION)"
+all: clean linux-amd64-all linux-arm64-all windows-amd64-all freebsd-amd64-all
 
-	@if [ -f ./bin/monokit2 ]; then \
-		rm ./bin/monokit2; \
-	fi
+linux-amd64-all: GOOS=linux
+linux-amd64-all: GOARCH=amd64
+linux-amd64-all: TARGET=GOOS=$(GOOS) GOARCH=$(GOARCH)
+linux-amd64-all:
+	@echo "Building version $(VERSION) for ${GOOS} ${GOARCH}"
 
-	@echo "Building monokit2"
-	@go build -ldflags "-X 'main.version=$(VERSION)'" -o ./bin/monokit2 ./main.go;
+	@echo "Building monokit2 for ${GOOS} ${GOARCH}"
+	@$(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -o ./bin/monokit2_$(VERSION)_${GOOS}_${GOARCH};
 
 	@for plugin in $(ACTIVE_PLUGINS); do \
-		echo "Building plugin $$plugin"; \
-        if [ -f plugins/bin/$$plugin ]; then \
-            rm plugins/bin/$$plugin; \
-        fi; \
+		echo "Building plugin $${plugin} for ${GOOS} ${GOARCH}"; \
         cd plugins/$$plugin; \
-        go build -ldflags "-X 'main.version=$(VERSION)'" -tags $$plugin -o ../bin/; \
+        $(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -tags $$plugin,${GOOS} -o ../bin/$${plugin}_$(VERSION)_${GOOS}_${GOARCH}; \
+        cd ../..; \
+    done
+
+linux-arm64-all: GOOS=linux
+linux-arm64-all: GOARCH=arm64
+linux-arm64-all: TARGET=GOOS=$(GOOS) GOARCH=$(GOARCH)
+linux-arm64-all:
+	@echo "Building version $(VERSION) for ${GOOS} ${GOARCH}"
+
+	@echo "Building monokit2 for ${GOOS} ${GOARCH}"
+	@$(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -o ./bin/monokit2_$(VERSION)_${GOOS}_${GOARCH};
+
+	@for plugin in $(ACTIVE_PLUGINS); do \
+		echo "Building plugin $${plugin} for ${GOOS} ${GOARCH}"; \
+        cd plugins/$$plugin; \
+        $(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -tags $$plugin,${GOOS} -o ../bin/$${plugin}_$(VERSION)_${GOOS}_${GOARCH}; \
+        cd ../..; \
+    done
+
+windows-amd64-all: GOOS=windows
+windows-amd64-all: GOARCH=amd64
+windows-amd64-all: TARGET=GOOS=$(GOOS) GOARCH=$(GOARCH)
+windows-amd64-all:
+	@echo "Building version $(VERSION) for ${GOOS} ${GOARCH}"
+
+	@echo "Building monokit2 for ${GOOS} ${GOARCH}"
+	@$(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -o ./bin/monokit2_$(VERSION)_${GOOS}_${GOARCH}.exe;
+
+	@for plugin in $(ACTIVE_PLUGINS); do \
+		echo "Building plugin $${plugin} for ${GOOS} ${GOARCH}"; \
+        cd plugins/$$plugin; \
+        $(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -tags $$plugin,${GOOS} -o ../bin/$${plugin}_$(VERSION)_${GOOS}_${GOARCH}.exe; \
+        cd ../..; \
+    done
+
+freebsd-amd64-all: GOOS=freebsd
+freebsd-amd64-all: GOARCH=amd64
+freebsd-amd64-all: TARGET=GOOS=$(GOOS) GOARCH=$(GOARCH)
+freebsd-amd64-all:
+	@echo "Building version $(VERSION) for ${GOOS} ${GOARCH}"
+
+	@echo "Building monokit2 for ${GOOS} ${GOARCH}"
+	@$(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -o ./bin/monokit2_$(VERSION)_${GOOS}_${GOARCH};
+
+	@for plugin in $(ACTIVE_PLUGINS); do \
+		echo "Building plugin $${plugin} for ${GOOS} ${GOARCH}"; \
+        cd plugins/$$plugin; \
+        $(TARGET) go build -ldflags "-X 'main.version=$(VERSION)'" -tags $$plugin,${GOOS} -o ../bin/$${plugin}_$(VERSION)_${GOOS}_${GOARCH}; \
         cd ../..; \
     done
 
@@ -83,12 +129,20 @@ test-docker:
 	@docker build -t tests . && docker run --rm tests
 
 clean:
-	@if [ -f ./bin/monokit2 ]; then \
-	    rm ./bin/monokit2; \
+	@echo "Cleaning ./bin"
+	@if [ -d ./bin ]; then \
+		for f in ./bin/*; do \
+			[ -e "$$f" ] || continue; \
+			echo "  removing $$f"; \
+			rm -f "$$f"; \
+		done; \
 	fi
 
-	@for plugin in $(ACTIVE_PLUGINS); do \
-		if [ -f plugins/bin/$$plugin ]; then \
-			rm plugins/bin/$$plugin; \
-		fi; \
-	done
+	@echo "Cleaning plugins/bin"
+	@if [ -d plugins/bin ]; then \
+		for f in plugins/bin/*; do \
+			[ -e "$$f" ] || continue; \
+			echo "  removing $$f"; \
+			rm -f "$$f"; \
+		done; \
+	fi
