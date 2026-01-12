@@ -136,6 +136,24 @@ func main() {
 		logger.Error().Err(err).Msg("Failed to create plugins directory")
 	}
 
+	if lib.GlobalConfig.AutoUpdate.Enabled {
+		result, err := lib.UpdateMonokit2(version, false)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to update Monokit2")
+		} else {
+			logger.Info().Msg(fmt.Sprintf("%s updated from version %s to %s", result.Name, result.OldVersion, result.NewVersion))
+		}
+
+		results, err := lib.UpdatePlugins(version, false)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to update plugins")
+		} else {
+			for _, res := range results {
+				logger.Info().Msg(fmt.Sprintf("Plugin %s updated from version %s to %s", res.Name, res.OldVersion, res.NewVersion))
+			}
+		}
+	}
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "-i", "--interactive", "interactive", "i", "tui":
