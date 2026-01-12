@@ -31,6 +31,11 @@ type GlobalConfigType struct {
 		Interval int    `yaml:"interval"`
 		Limit    int    `yaml:"limit"`
 	} `yaml:"redmine"`
+
+	AutoUpdate struct {
+		Enabled  bool `yaml:"enabled"`
+		Interval int  `yaml:"interval"`
+	} `yaml:"auto-update"`
 }
 
 type OsHealthConfigType struct {

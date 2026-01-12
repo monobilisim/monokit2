@@ -32,3 +32,8 @@ redmine:
   interval: 10
   # how many times same alert can be sent back to back
   limit: 10
+
+auto-update:
+  enabled: true
+  # Only updates non major versions. (e.g. 1.2.3 to 1.2.4)
+  interval: 60 # in minutes
