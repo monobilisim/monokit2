@@ -2,6 +2,8 @@ package lib
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,12 +28,14 @@ type PluginInfo struct {
 	Name        string
 	Version     string
 	DisplayName string
+	SHA256      string
 }
 
 type RemotePlugin struct {
 	Name        string
 	DownloadURL string
 	FileName    string
+	SHA256      string
 }
 
 type UIState int
@@ -159,10 +163,12 @@ func (m *TUIModel) refreshPluginList() {
 			choices = append(choices, pluginName)
 
 			version := m.getPluginVersion(pluginName)
+			hash := calculateFileHash(filepath.Join(PluginsDir, pluginName))
 			pluginInfo := PluginInfo{
 				Name:        pluginName,
 				Version:     version,
 				DisplayName: pluginName, // Now plugins are saved with base name
+				SHA256:      hash,
 			}
 			pluginInfos = append(pluginInfos, pluginInfo)
 		}
@@ -220,6 +226,22 @@ func isPluginForCurrentPlatform(pluginName, currentOS, currentArch string) bool 
 
 	// Plugin has no platform suffix - consider it a generic/compatible plugin
 	return true
+}
+
+// calculateFileHash calculates SHA256 hash of a file
+func calculateFileHash(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return ""
+	}
+
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func (m *TUIModel) getPluginVersion(pluginName string) string {
@@ -292,6 +314,49 @@ func fetchLatestReleaseTag(useDevel bool) (string, error) {
 	return "", fmt.Errorf("could not determine latest release tag")
 }
 
+// fetchChecksums fetches and parses the checksums.txt file from a GitHub release
+func fetchChecksums(tag string) (map[string]string, error) {
+	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/checksums.txt", githubOwner, githubRepo, tag)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch checksums: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Checksums file might not exist, return empty map
+		return make(map[string]string), nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read checksums: %v", err)
+	}
+
+	checksums := make(map[string]string)
+	lines := strings.Split(string(body), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Format: "hash  filename" or "hash filename"
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			hash := parts[0]
+			fileName := parts[len(parts)-1]
+			checksums[fileName] = hash
+		}
+	}
+
+	return checksums, nil
+}
+
 // fetchAvailablePlugins scrapes GitHub releases page to get available plugin assets
 func fetchAvailablePlugins(tag string) ([]RemotePlugin, error) {
 	url := fmt.Sprintf("https://github.com/%s/%s/releases/expanded_assets/%s", githubOwner, githubRepo, tag)
@@ -314,6 +379,9 @@ func fetchAvailablePlugins(tag string) ([]RemotePlugin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %v", err)
 	}
+
+	// Fetch checksums for hash comparison
+	checksums, _ := fetchChecksums(tag)
 
 	// Parse asset links from HTML
 	// Looking for links like: href="/monobilisim/monokit2/releases/download/devel/osHealth_devel_linux_amd64"
@@ -343,16 +411,24 @@ func fetchAvailablePlugins(tag string) ([]RemotePlugin, error) {
 				continue
 			}
 
+			// Skip checksums.txt file
+			if fileName == "checksums.txt" {
+				continue
+			}
+
 			// Only include plugins for current platform
 			if !isPluginForCurrentPlatform(fileName, currentOS, currentArch) {
 				continue
 			}
 
 			downloadURL := fmt.Sprintf("https://github.com%s", path)
+			remoteHash := checksums[fileName]
+
 			plugins = append(plugins, RemotePlugin{
 				Name:        baseName,
 				DownloadURL: downloadURL,
 				FileName:    fileName,
+				SHA256:      remoteHash,
 			})
 		}
 	}
@@ -425,18 +501,31 @@ func (m *TUIModel) buildPluginSelectionChoices() {
 	choices = append(choices, "← Back")
 
 	for _, plugin := range m.remotePlugins {
-		// Check if already installed
+		// Check if already installed and compare hashes
 		installedVersion := ""
+		installedHash := ""
+		hasUpdate := false
+
 		for _, installed := range m.pluginInfos {
 			if installed.DisplayName == plugin.Name {
 				installedVersion = installed.Version
+				installedHash = installed.SHA256
 				break
 			}
 		}
 
+		// Check for updates using hash comparison (especially useful for devel)
+		if installedHash != "" && plugin.SHA256 != "" && installedHash != plugin.SHA256 {
+			hasUpdate = true
+		}
+
 		displayText := plugin.Name
 		if installedVersion != "" {
-			displayText = fmt.Sprintf("%s (installed: %s)", plugin.Name, installedVersion)
+			if hasUpdate {
+				displayText = fmt.Sprintf("%s (installed: %s) [update available]", plugin.Name, installedVersion)
+			} else {
+				displayText = fmt.Sprintf("%s (installed: %s) [up to date]", plugin.Name, installedVersion)
+			}
 		}
 		choices = append(choices, displayText)
 	}
@@ -609,10 +698,19 @@ func (m TUIModel) renderPluginSelection() string {
 		if choice == "← Back" {
 			s.WriteString(fmt.Sprintf("%s%s\n", cursor, style.Render(choice)))
 		} else {
-			// Check if it's installed
-			if strings.Contains(choice, "(installed:") {
-				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, style.Render(strings.Split(choice, " (")[0]), versionStyle.Render("("+strings.Split(choice, "(")[1])))
+			pluginName := strings.Split(choice, " (")[0]
+
+			if strings.Contains(choice, "[update available]") {
+				// Has update available
+				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, style.Render(pluginName), updateAvailableStyle.Render("[update available]")))
+			} else if strings.Contains(choice, "[up to date]") {
+				// Up to date
+				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, style.Render(pluginName), versionStyle.Render("[up to date]")))
+			} else if strings.Contains(choice, "(installed:") {
+				// Installed but no hash to compare
+				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, style.Render(pluginName), versionStyle.Render("[installed]")))
 			} else {
+				// Not installed
 				s.WriteString(fmt.Sprintf("%s%s %s\n", cursor, style.Render(choice), updateAvailableStyle.Render("[new]")))
 			}
 		}
@@ -863,10 +961,13 @@ func ListPlugins() ([]PluginInfo, error) {
 				}
 			}
 
+			hash := calculateFileHash(pluginPath)
+
 			plugins = append(plugins, PluginInfo{
 				Name:        pluginName,
 				Version:     version,
 				DisplayName: pluginName,
+				SHA256:      hash,
 			})
 		}
 	}
