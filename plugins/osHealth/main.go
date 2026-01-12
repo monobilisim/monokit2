@@ -37,7 +37,10 @@ func main() {
 
 	logger.Info().Msg("Starting OS Health monitoring plugin...")
 
-	CheckApplicationVersion(logger)
+	// checks supported application versions and reports when updated
+	if lib.OsHealthConfig.VersionAlarm.Enabled {
+		CheckApplicationVersion(logger)
+	}
 
 	// checks system load
 	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {

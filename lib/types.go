@@ -58,6 +58,10 @@ type OsHealthConfigType struct {
 		Enabled bool `yaml:"enabled"`
 		Limit   int  `yaml:"limit"`
 	} `yaml:"disk-usage-alarm"`
+
+	VersionAlarm struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"version-alarm"`
 }
 
 type UfwApplyConfigType struct {

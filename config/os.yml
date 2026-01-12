@@ -21,3 +21,7 @@ disk-usage-alarm:
   # This alarm limit is for individual partitions, because different devices can be mounted on different OS parts.
   # %90 to trigger alarm by default
   limit: 90
+
+version-alarm:
+  enabled: true
+  # Each time any supported software updates its version, an Redmine news will be sent.
