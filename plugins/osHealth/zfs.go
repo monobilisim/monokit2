@@ -164,17 +164,17 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 
 		if lastIssue.Status == down {
 			issue = lib.Issue{
-				Subject:     issueSubject,
-				Description: fmt.Sprintf("%s için tüm ZFS poolları sağlıklı durumda.", lib.GlobalConfig.Hostname),
-				StatusId:    lib.IssueStatus.Resolved,
-				PriorityId:  lib.IssuePriority.Urgent,
-				Service:     pluginName,
-				Module:      moduleName,
-				Status:      up,
+				Subject:    issueSubject,
+				Notes:      fmt.Sprintf("%s için tüm ZFS poolları sağlıklı durumda.", lib.GlobalConfig.Hostname),
+				StatusId:   lib.IssueStatus.Resolved,
+				PriorityId: lib.IssuePriority.Urgent,
+				Service:    pluginName,
+				Module:     moduleName,
+				Status:     up,
 			}
-		}
 
-		lib.CreateRedmineIssue(issue)
+			lib.CreateRedmineIssue(issue)
+		}
 	}
 
 	moduleName = "zfsCapacity"
@@ -257,16 +257,16 @@ func CheckSystemDiskZFS(logger zerolog.Logger) {
 
 		if lastIssue.Status == down {
 			issue = lib.Issue{
-				Subject:     issueSubject,
-				Description: fmt.Sprintf("%s için bütün ZFS datasetleri %d%% altına indi, kapatılıyor.", lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit),
-				StatusId:    lib.IssueStatus.Resolved,
-				PriorityId:  lib.IssuePriority.Urgent,
-				Service:     pluginName,
-				Module:      moduleName,
-				Status:      up,
+				Subject:    issueSubject,
+				Notes:      fmt.Sprintf("%s için bütün ZFS datasetleri %d%% altına indi, kapatılıyor.", lib.GlobalConfig.Hostname, lib.OsHealthConfig.DiskUsageAlarm.Limit),
+				StatusId:   lib.IssueStatus.Resolved,
+				PriorityId: lib.IssuePriority.Urgent,
+				Service:    pluginName,
+				Module:     moduleName,
+				Status:     up,
 			}
-		}
 
-		lib.CreateRedmineIssue(issue)
+			lib.CreateRedmineIssue(issue)
+		}
 	}
 }
