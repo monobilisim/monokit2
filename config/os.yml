@@ -24,4 +24,4 @@ disk-usage-alarm:
 
 version-alarm:
   enabled: true
-  # Each time any supported software updates its version, an Redmine news will be sent.
+  # Each time any supported software updates its version, a Redmine news will be sent.
