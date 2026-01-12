@@ -84,17 +84,17 @@ func isVersionMatch(currentVersion, targetVersion string) bool {
 
 // isChecksumMatch checks if a local file's hash matches the expected remote hash
 // Returns true if they match (no update needed), false otherwise
-func isChecksumMatch(filePath, expectedHash string) bool {
+func isChecksumMatch(filePath, expectedHash string) (bool, bool) {
 	if expectedHash == "" {
-		return false // Can't verify, assume update needed
+		return false, false // Can't verify, no expected hash available
 	}
 
 	actualHash := calculateFileHash(filePath)
 	if actualHash == "" {
-		return false // Can't calculate, assume update needed
+		return false, true // Can't calculate local hash, but expected hash exists
 	}
 
-	return strings.EqualFold(actualHash, expectedHash)
+	return strings.EqualFold(actualHash, expectedHash), true
 }
 
 // verifyChecksum verifies a file's SHA256 hash against an expected hash
@@ -333,9 +333,21 @@ func UpdateMonokit2(currentVersion string, forceUpdate bool) (*UpdateResult, err
 	expectedHash := checksums[fileName]
 
 	// For devel releases: check if checksum matches (skip update if same binary)
-	if useDevel && !forceUpdate && isChecksumMatch(execPath, expectedHash) {
-		Logger.Info().Msgf("monokit2 is already up-to-date (checksum match), skipping update")
-		return result, nil
+	if useDevel && !forceUpdate {
+		if expectedHash == "" {
+			Logger.Warn().Msgf("No checksum found for %s in release %s, skipping update", fileName, tag)
+			return result, nil
+		}
+		checksumMatch, canVerify := isChecksumMatch(execPath, expectedHash)
+		if !canVerify {
+			Logger.Warn().Msg("Could not calculate local binary checksum, skipping update")
+			return result, nil
+		}
+		if checksumMatch {
+			Logger.Info().Msgf("monokit2 is already up-to-date (checksum match), skipping update")
+			return result, nil
+		}
+		Logger.Info().Msgf("Checksum mismatch detected, proceeding with update")
 	}
 
 	tmpDir, err := ensureTmpDir(DbDir)
@@ -498,10 +510,24 @@ func UpdatePlugins(currentMonokitVersion string, forceUpdate bool) ([]UpdateResu
 		expectedHash := checksums[fileName]
 
 		// For devel releases: check if checksum matches (skip update if same binary)
-		if useDevel && !forceUpdate && isChecksumMatch(pluginPath, expectedHash) {
-			Logger.Info().Msgf("Plugin %s is already up-to-date (checksum match), skipping update", pluginName)
-			results = append(results, result)
-			continue
+		if useDevel && !forceUpdate {
+			if expectedHash == "" {
+				Logger.Warn().Msgf("No checksum found for plugin %s (%s) in release %s, skipping update", pluginName, fileName, tag)
+				results = append(results, result)
+				continue
+			}
+			checksumMatch, canVerify := isChecksumMatch(pluginPath, expectedHash)
+			if !canVerify {
+				Logger.Warn().Msgf("Could not calculate local checksum for plugin %s, skipping update", pluginName)
+				results = append(results, result)
+				continue
+			}
+			if checksumMatch {
+				Logger.Info().Msgf("Plugin %s is already up-to-date (checksum match), skipping update", pluginName)
+				results = append(results, result)
+				continue
+			}
+			Logger.Info().Msgf("Plugin %s checksum mismatch detected, proceeding with update", pluginName)
 		}
 
 		// Check for major version change
