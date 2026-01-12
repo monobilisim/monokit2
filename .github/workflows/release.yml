@@ -78,6 +78,18 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install -y gh
 
+      - name: Generate checksums
+        run: |
+          touch checksums.txt
+          if [ -d "bin" ] && [ "$(ls -A bin 2>/dev/null)" ]; then
+            (cd bin && sha256sum *) >> checksums.txt 2>/dev/null || true
+          fi
+          if [ -d "plugins/bin" ] && [ "$(ls -A plugins/bin 2>/dev/null)" ]; then
+            (cd plugins/bin && sha256sum *) >> checksums.txt 2>/dev/null || true
+          fi
+          echo "Generated checksums:"
+          cat checksums.txt
+
       - name: Create normal release
         uses: softprops/action-gh-release@v2.0.5
         with:
@@ -92,6 +104,7 @@ jobs:
           files: |
             bin/*
             plugins/bin/*
+            checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -111,6 +124,18 @@ jobs:
 
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install -y gh
+
+      - name: Generate checksums
+        run: |
+          touch checksums.txt
+          if [ -d "bin" ] && [ "$(ls -A bin 2>/dev/null)" ]; then
+            (cd bin && sha256sum *) >> checksums.txt 2>/dev/null || true
+          fi
+          if [ -d "plugins/bin" ] && [ "$(ls -A plugins/bin 2>/dev/null)" ]; then
+            (cd plugins/bin && sha256sum *) >> checksums.txt 2>/dev/null || true
+          fi
+          echo "Generated checksums:"
+          cat checksums.txt
 
       - name: Delete existing devel prerelease (if exists)
         run: |
@@ -132,5 +157,6 @@ jobs:
           files: |
             bin/*
             plugins/bin/*
+            checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
