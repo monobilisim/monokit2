@@ -11,7 +11,15 @@ import (
 var version string
 
 func main() {
-	lib.HandleCommonPluginArgs(os.Args, version, []string{})
+	if len(os.Args) == 2 {
+		switch os.Args[1] {
+		case "--version", "-v", "version", "v", "--dependencies", "-d", "dependencies", "d":
+			lib.HandleCommonPluginArgs(os.Args, version, []string{})
+			return
+		default:
+			// continue execution
+		}
+	}
 
 	if lib.IsTestMode() {
 		dir, err := os.UserHomeDir()
