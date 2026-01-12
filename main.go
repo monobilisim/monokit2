@@ -143,22 +143,21 @@ func main() {
 				fmt.Printf("Error running TUI: %v\n", err)
 				os.Exit(1)
 			}
+			return
 		default:
+			// Run specific plugin with arguments
+			plugin := os.Args[1]
+			args := []string{}
+			if len(os.Args) > 2 {
+				args = os.Args[2:]
+			}
+
+			if err := lib.RunPlugin(plugin, args); err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
 			return
 		}
-
-		// Run specific plugin with arguments
-		plugin := os.Args[1]
-		args := []string{}
-		if len(os.Args) > 2 {
-			args = os.Args[2:]
-		}
-
-		if err := lib.RunPlugin(plugin, args); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		return
 	}
 
 }
