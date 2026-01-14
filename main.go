@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	lib "github.com/monobilisim/monokit2/lib"
+	"github.com/rs/zerolog"
 )
 
 // comes from -ldflags "-X 'main.version=version'" flag in ci build
@@ -145,19 +147,23 @@ func main() {
 	}
 
 	if lib.GlobalConfig.AutoUpdate.Enabled {
-		result, err := lib.UpdateMonokit2(version, false)
-		if err != nil {
-			logger.Error().Err(err).Msg("Failed to update Monokit2")
-		} else {
-			logger.Info().Msg(fmt.Sprintf("%s updated from version %s to %s", result.Name, result.OldVersion, result.NewVersion))
+		logger.Info().Msg("Auto-update is enabled, checking for last update date...")
+		intervalName := "auto-update"
+
+		lastCronInterval := lib.GetLastCronInterval(intervalName)
+
+		if lastCronInterval.LastRun == nil {
+			update(intervalName, logger)
 		}
 
-		results, err := lib.UpdatePlugins(version, false)
-		if err != nil {
-			logger.Error().Err(err).Msg("Failed to update plugins")
-		} else {
-			for _, res := range results {
-				logger.Info().Msg(fmt.Sprintf("Plugin %s updated from version %s to %s", res.Name, res.OldVersion, res.NewVersion))
+		if !(lastCronInterval.LastRun == nil) {
+			intervalInSeconds := lib.GlobalConfig.AutoUpdate.Interval * 60
+			now := time.Now()
+
+			if now.Sub(*lastCronInterval.LastRun).Seconds() < float64(intervalInSeconds) {
+				logger.Info().Msg("Auto-update skipped due to interval not reached")
+			} else {
+				update(intervalName, logger)
 			}
 		}
 	}
@@ -186,4 +192,24 @@ func main() {
 		}
 	}
 
+}
+
+func update(intervalName string, logger zerolog.Logger) {
+	result, err := lib.UpdateMonokit2(version, false)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to update Monokit2")
+	} else {
+		logger.Info().Msg(fmt.Sprintf("%s updated from version %s to %s", result.Name, result.OldVersion, result.NewVersion))
+	}
+
+	results, err := lib.UpdatePlugins(version, false)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to update plugins")
+	} else {
+		for _, res := range results {
+			logger.Info().Msg(fmt.Sprintf("Plugin %s updated from version %s to %s", res.Name, res.OldVersion, res.NewVersion))
+		}
+	}
+
+	lib.CreateOrUpdateCronInterval(intervalName)
 }

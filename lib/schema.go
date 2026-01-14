@@ -32,6 +32,8 @@ func InitializeDatabase() error {
 
 	db.AutoMigrate(&News{})
 
+	db.AutoMigrate(&CronInterval{})
+
 	DB = db
 
 	return nil

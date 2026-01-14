@@ -1,0 +1,77 @@
+package lib
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Version struct {
+	gorm.Model
+	Id           uint   `gorm:"primaryKey;autoIncrement"`
+	Name         string `gorm:"text,unique" json:"name"`
+	Version      string `gorm:"text" json:"version"`       // direct version
+	VersionMulti string `gorm:"text" json:"version_multi"` // version in json format for software with multiple components
+	Status       string `gorm:"text" json:"status"`        // installed, not-installed
+}
+
+type SystemdUnits struct {
+	gorm.Model
+	id                uint   `gorm:"primaryKey"`
+	ProjectIdentifier string `gorm:"text"` // internal use
+	Hostname          string `gorm:"text"` // internal use
+	Name              string `gorm:"text,unique"`
+	LoadState         string `gorm:"text"`
+	ActiveState       string `gorm:"text"`
+	SubState          string `gorm:"text"`
+	Uptime            int64  `gorm:"int"`
+	Description       string `gorm:"text"`
+}
+
+type ZulipAlarm struct {
+	gorm.Model
+	Id                uint   `gorm:"primaryKey"`
+	ProjectIdentifier string `gorm:"text"` // internal use
+	Hostname          string `gorm:"text"` // internal use
+	Content           string `gorm:"text"`
+	Status            string `gorm:"text"` // down or up
+	Service           string `gorm:"text"` // plugin name
+	Module            string `gorm:"text"` // plugin's module name
+}
+
+type Issue struct {
+	gorm.Model
+	TableId           uint   `gorm:"primaryKey;autoIncrement"`
+	Id                int    `gorm:"int" json:"id,omitempty"`
+	Notes             string `gorm:"text" json:"notes,omitempty"`
+	ProjectId         string `gorm:"text" json:"project_id,omitempty"`
+	TrackerId         int    `gorm:"int" json:"tracker_id,omitempty"`
+	Description       string `gorm:"text" json:"description,omitempty"`
+	Subject           string `gorm:"text" json:"subject,omitempty"`
+	PriorityId        int    `gorm:"int" json:"priority_id,omitempty"`
+	StatusId          int    `gorm:"int" json:"status_id,omitempty"`
+	AssignedToId      string `gorm:"text" json:"assigned_to_id"`
+	ProjectIdentifier string `gorm:"text"`          // internal use
+	Hostname          string `gorm:"text"`          // internal use
+	Status            string `gorm:"text" json:"-"` // down or up
+	Service           string `gorm:"text" json:"-"` // plugin name
+	Module            string `gorm:"text" json:"-"` // plugin's module name
+}
+
+type News struct {
+	gorm.Model
+	TableId           uint   `gorm:"primaryKey;autoIncrement"`
+	Id                int    `gorm:"int" json:"id,omitempty"`
+	Title             string `gorm:"text" json:"title,omitempty"`
+	Description       string `gorm:"text" json:"description,omitempty"`
+	ProjectIdentifier string `gorm:"text" json:"-"` // internal use
+	Hostname          string `gorm:"text" json:"-"` // internal use
+}
+
+// CronInterval keeps track of the last run time of various cron jobs
+type CronInterval struct {
+	gorm.Model
+	Id      uint       `gorm:"primaryKey;autoIncrement"`
+	Name    string     `gorm:"text,unique" json:"name"`
+	LastRun *time.Time `gorm:"int" json:"last_run"`
+}
