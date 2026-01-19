@@ -112,6 +112,7 @@ else
 endif
 
 test-must-run-on-docker:
+ifeq ($(strip $(TESTNAME)),)
 	@echo "Running tests..."
 	@if [ ! -f ./bin/monokit2 ]; then \
         make build; \
@@ -125,13 +126,45 @@ test-must-run-on-docker:
 		TEST=true go test -tags $$plugin; \
 		cd ../..; \
 	done;
+else
+	@echo "Running tests..."
+	@if [ ! -f ./bin/monokit2 ]; then \
+       make build; \
+    fi
+	@./bin/monokit2 reset --force
+	@./bin/monokit2
+	@TEST=true go test -v -run "$(TESTNAME)" >> /var/lib/monokit2.log 2>&1
+
+	@for plugin in $(ACTIVE_PLUGINS); do \
+	    cd plugins/$$plugin; \
+		TEST=true go test -v -tags $$plugin -run "$(TESTNAME)" >> /var/lib/monokit2.log 2>&1; \
+		cd ../..; \
+	done;
+endif
 
 test:
 	@docker build -t tests . && docker run --rm tests
 
 test-get-artifacts:
-	@docker build -t tests .
-	@docker run --rm -v $(realpath ./logs/test):/artifacts -e HOST_UID=$(shell id -u) -e HOST_GID=$(shell id -g) tests
+	@DOCKER_BUILDKIT=1 docker build -t tests .
+ifeq ($(strip TESTNAME),)
+	@docker run --rm \
+		-v go-mod-cache:/go/pkg/mod \
+		-v go-build-cache:/root/.cache/go-build \
+		-v $(realpath ./logs/test):/artifacts \
+		-e HOST_UID=$(shell id -u) \
+		-e HOST_GID=$(shell id -g) \
+		tests
+else
+	@docker run --rm \
+		-v go-mod-cache:/go/pkg/mod \
+		-v go-build-cache:/root/.cache/go-build \
+		-v $(realpath ./logs/test):/artifacts \
+		-e TESTNAME=$(TESTNAME) \
+		-e HOST_UID=$(shell id -u) \
+		-e HOST_GID=$(shell id -g) \
+		tests
+endif
 
 clean:
 	@echo "Cleaning ./bin"

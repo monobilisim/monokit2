@@ -12,6 +12,7 @@ ENV CGO_ENABLED=1
 COPY go.mod go.sum ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
 COPY . .
