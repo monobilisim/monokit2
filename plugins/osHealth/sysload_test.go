@@ -56,7 +56,7 @@ func TestCheckSystemLoad(t *testing.T) {
 
 	// Wait for load to rise above limit
 	// Load average is a moving average, so it takes time to rise.
-	timeout := time.After(20 * time.Second)
+	timeout := time.After(1 * time.Minute)
 	ticker := time.NewTicker(2 * time.Second)
 
 	loadHigh := false

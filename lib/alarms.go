@@ -478,11 +478,52 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 	}
 
 	if !IsTestMode() {
-		updateData := map[string]interface{}{
-			"issue": map[string]interface{}{
-				"status_id": issue.StatusId,
-				"notes":     issue.Notes,
-			},
+		// Check if issue has an assignee on Redmine
+		getUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
+		reqGet, err := http.NewRequest("GET", getUrl, nil)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", getUrl).Msg("Failed to create issue fetch request")
+			return err
+		}
+
+		reqGet.Header.Set("Content-Type", "application/json")
+		reqGet.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
+		reqGet.Header.Set("User-Agent", "Monokit/devel")
+
+		getClient := &http.Client{Timeout: time.Second * 30}
+		respGet, err := getClient.Do(reqGet)
+		if err != nil {
+			Logger.Error().Err(err).Str("url", getUrl).Msg("Failed to send issue fetch request")
+			return err
+		}
+		defer respGet.Body.Close()
+
+		if respGet.StatusCode < 200 || respGet.StatusCode >= 300 {
+			body, _ := io.ReadAll(respGet.Body)
+			Logger.Error().Int("status_code", respGet.StatusCode).Str("response", string(body)).Msg("Failed to fetch Redmine issue")
+			return fmt.Errorf("failed to fetch issue, status code: %d", respGet.StatusCode)
+		}
+
+		var issueResp RedmineIssue
+		bodyGet, err := io.ReadAll(respGet.Body)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to read fetch response body")
+			return err
+		}
+
+		err = json.Unmarshal(bodyGet, &issueResp)
+		if err != nil {
+			Logger.Error().Err(err).Msg("Failed to parse fetch response")
+			return err
+		}
+
+		var updateData RedmineIssue
+
+		if issueResp.Issue.AssignedToId == "" {
+			updateData.Issue.Notes = issue.Notes
+			updateData.Issue.StatusId = issue.StatusId
+		} else {
+			updateData.Issue.Notes = issue.Notes
 		}
 
 		jsonBody, err := json.Marshal(updateData)
@@ -500,8 +541,8 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 		req.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
 		req.Header.Set("User-Agent", "Monokit/devel")
 
-		client := &http.Client{Timeout: time.Second * 30}
-		resp, err := client.Do(req)
+		postClient := &http.Client{Timeout: time.Second * 30}
+		resp, err := postClient.Do(req)
 		if err != nil {
 			Logger.Error().Err(err).Str("url", updateUrl).Msg("Failed to send issue update request")
 			return err
