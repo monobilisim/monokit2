@@ -133,11 +133,11 @@ else
     fi
 	@./bin/monokit2 reset --force
 	@./bin/monokit2
-	@TEST=true go test -v -run "$(TESTNAME)" >> /var/lib/monokit2.log 2>&1
+	@TEST=true go test -v -run "$(TESTNAME)" 2>&1 | tee -a /var/lib/monokit2.log
 
 	@for plugin in $(ACTIVE_PLUGINS); do \
 	    cd plugins/$$plugin; \
-		TEST=true go test -v -tags $$plugin -run "$(TESTNAME)" >> /var/lib/monokit2.log 2>&1; \
+		TEST=true go test -v -tags $$plugin -run "$(TESTNAME)" 2>&1 | tee -a /var/lib/monokit2.log ; \
 		cd ../..; \
 	done;
 endif
