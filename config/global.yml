@@ -34,6 +34,6 @@ redmine:
   limit: 10
 
 auto-update:
-  enabled: true
+  enabled: false
   # Only updates non major versions. (e.g. 1.2.3 to 1.2.4)
   interval: 60 # in minutes

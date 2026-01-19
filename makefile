@@ -111,7 +111,7 @@ else
 	@scp ./plugins/bin/$(PLUGIN) $(HOST):/var/lib/monokit2/plugins/
 endif
 
-test:
+test-must-run-on-docker:
 	@echo "Running tests..."
 	@if [ ! -f ./bin/monokit2 ]; then \
         make build; \
@@ -126,8 +126,12 @@ test:
 		cd ../..; \
 	done;
 
-test-docker:
+test:
 	@docker build -t tests . && docker run --rm tests
+
+test-get-artifacts:
+	@docker build -t tests .
+	@docker run --rm -v $(realpath ./logs/test):/artifacts -e HOST_UID=$(shell id -u) -e HOST_GID=$(shell id -g) tests
 
 clean:
 	@echo "Cleaning ./bin"
