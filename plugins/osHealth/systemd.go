@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,6 +27,17 @@ func CheckSystemInit(logger zerolog.Logger) {
 	}
 
 	for _, service := range services {
+		matched := false
+		for _, pattern := range lib.OsHealthConfig.ServiceHealthAlarm.Services {
+			if match, _ := filepath.Match(pattern, service.Name); match {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			continue
+		}
 
 		var existingService SystemdUnits
 		err := lib.DB.Model(&SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&existingService).Error

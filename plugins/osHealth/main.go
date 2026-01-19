@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// checks systemd services status
-	if hasSystemd() {
+	if lib.OsHealthConfig.ServiceHealthAlarm.Enabled && hasSystemd() {
 		CheckSystemInit(logger)
 	}
 }

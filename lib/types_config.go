@@ -65,6 +65,11 @@ type OsHealthConfigType struct {
 	VersionAlarm struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"version-alarm"`
+
+	ServiceHealthAlarm struct {
+		Enabled  bool     `yaml:"enabled"`
+		Services []string `yaml:"services"`
+	} `yaml:"service-health-alarm"`
 }
 
 type UfwApplyConfigType struct {
