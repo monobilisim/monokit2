@@ -3,8 +3,9 @@ VERSION ?= devel
 
 # Example usage:
 # make all VERSION=1.0.0
-# make build PLUGIN=osHealth VERSION=1.0.0
-# make run PLUGIN=osHealth ARGS="-v" VERSION=1.0.0
+# make build [PLUGIN=pluginName] VERSION=1.0.0
+# make run [PLUGIN=pluginName] ARGS="-v" VERSION=1.0.0
+# make send HOST=user@host [PLUGIN=pluginName]
 
 .PHONY: clean all
 
