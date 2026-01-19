@@ -478,7 +478,6 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 	}
 
 	if !IsTestMode() {
-		// Check if issue has an assignee on Redmine
 		getUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
 		reqGet, err := http.NewRequest("GET", getUrl, nil)
 		if err != nil {
@@ -517,14 +516,14 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 			return err
 		}
 
-		var updateData RedmineIssue
-
+		var updateIssue Issue
+		updateIssue.Notes = issue.Notes
 		if issueResp.Issue.AssignedToId == "" {
-			updateData.Issue.Notes = issue.Notes
-			updateData.Issue.StatusId = issue.StatusId
-		} else {
-			updateData.Issue.Notes = issue.Notes
+			updateIssue.StatusId = issue.StatusId
 		}
+
+		var updateData RedmineIssue
+		updateData.Issue = updateIssue
 
 		jsonBody, err := json.Marshal(updateData)
 		if err != nil {
@@ -622,16 +621,16 @@ func reopenRedmineIssue(issueId int, issue Issue) error {
 }
 
 func createNewRedmineIssue(issue Issue) error {
-	createData := map[string]interface{}{
-		"issue": map[string]interface{}{
-			"project_id":  GlobalConfig.ProjectIdentifier,
-			"tracker_id":  issue.TrackerId,
-			"subject":     issue.Subject,
-			"description": issue.Description,
-			"priority_id": issue.PriorityId,
-			"status_id":   issue.StatusId,
-		},
-	}
+	var createIssue Issue
+	createIssue.ProjectId = GlobalConfig.ProjectIdentifier
+	createIssue.TrackerId = issue.TrackerId
+	createIssue.Subject = issue.Subject
+	createIssue.Description = issue.Description
+	createIssue.PriorityId = issue.PriorityId
+	createIssue.StatusId = issue.StatusId
+
+	var createData RedmineIssue
+	createData.Issue = createIssue
 
 	if IsTestMode() {
 		Logger.Info().Msg("Test mode is enabled, skipping creating Redmine issue")

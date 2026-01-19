@@ -50,7 +50,7 @@ type Issue struct {
 	Subject           string `gorm:"text" json:"subject,omitempty"`
 	PriorityId        int    `gorm:"int" json:"priority_id,omitempty"`
 	StatusId          int    `gorm:"int" json:"status_id,omitempty"`
-	AssignedToId      string `gorm:"text" json:"assigned_to_id"`
+	AssignedToId      string `gorm:"text" json:"assigned_to_id,omitempty"`
 	ProjectIdentifier string `gorm:"text"`          // internal use
 	Hostname          string `gorm:"text"`          // internal use
 	Status            string `gorm:"text" json:"-"` // down or up
