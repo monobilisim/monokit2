@@ -478,41 +478,9 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 	}
 
 	if !IsTestMode() {
-		getUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
-		reqGet, err := http.NewRequest("GET", getUrl, nil)
+		issueResp, err := GetIssueFromRedmine(issueId)
 		if err != nil {
-			Logger.Error().Err(err).Str("url", getUrl).Msg("Failed to create issue fetch request")
-			return err
-		}
-
-		reqGet.Header.Set("Content-Type", "application/json")
-		reqGet.Header.Set("X-Redmine-API-Key", GlobalConfig.Redmine.ApiKey)
-		reqGet.Header.Set("User-Agent", "Monokit/devel")
-
-		getClient := &http.Client{Timeout: time.Second * 30}
-		respGet, err := getClient.Do(reqGet)
-		if err != nil {
-			Logger.Error().Err(err).Str("url", getUrl).Msg("Failed to send issue fetch request")
-			return err
-		}
-		defer respGet.Body.Close()
-
-		if respGet.StatusCode < 200 || respGet.StatusCode >= 300 {
-			body, _ := io.ReadAll(respGet.Body)
-			Logger.Error().Int("status_code", respGet.StatusCode).Str("response", string(body)).Msg("Failed to fetch Redmine issue")
-			return fmt.Errorf("failed to fetch issue, status code: %d", respGet.StatusCode)
-		}
-
-		var issueResp RedmineIssue
-		bodyGet, err := io.ReadAll(respGet.Body)
-		if err != nil {
-			Logger.Error().Err(err).Msg("Failed to read fetch response body")
-			return err
-		}
-
-		err = json.Unmarshal(bodyGet, &issueResp)
-		if err != nil {
-			Logger.Error().Err(err).Msg("Failed to parse fetch response")
+			Logger.Error().Err(err).Int("issue_id", issueId).Msg("Failed to fetch issue from Redmine")
 			return err
 		}
 

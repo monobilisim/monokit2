@@ -1,6 +1,8 @@
 package lib
 
-import "time"
+import (
+	"time"
+)
 
 type RedmineIssue struct {
 	Issue Issue `json:"issue"`
@@ -12,6 +14,12 @@ type RedmineNews struct {
 
 type RedmineDate struct {
 	time.Time
+}
+
+type RedmineAPIObject struct {
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	IsClosed *bool  `json:"is_closed"`
 }
 
 var IssuePriority = struct {

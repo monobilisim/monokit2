@@ -52,23 +52,23 @@ type Issue struct {
 	StatusId     int    `gorm:"int" json:"status_id,omitempty"`
 	AssignedToId string `gorm:"text" json:"assigned_to_id,omitempty"`
 
-	Project             string       `gorm:"text" json:"project,omitempty"`
-	Tracker             string       `gorm:"text" json:"tracker,omitempty"`
-	IssueStatus         string       `gorm:"text" json:"status,omitempty"`
-	Priority            string       `gorm:"text" json:"priority,omitempty"`
-	Author              string       `gorm:"text" json:"author,omitempty"`
-	AssignedTo          *string      `gorm:"text" json:"assigned_to,omitempty"`
-	StartDate           RedmineDate  `gorm:"time" json:"start_date,omitempty"`
-	DueDate             *RedmineDate `gorm:"time" json:"due_date,omitempty"`
-	DoneRatio           int          `gorm:"int" json:"done_ratio,omitempty"`
-	IsPrivate           bool         `gorm:"bool" json:"is_private,omitempty"`
-	EstimatedHours      *time.Time   `gorm:"time" json:"estimated_hours,omitempty"`
-	TotalEstimatedHours *time.Time   `gorm:"time" json:"total_estimated_hours,omitempty"`
-	SpentHours          float64      `gorm:"float" json:"spent_hours,omitempty"`
-	TotalSpentHours     float64      `gorm:"float" json:"total_spent_hours,omitempty"`
-	CreatedOn           time.Time    `gorm:"time" json:"created_on,omitempty"`
-	UpdatedOn           time.Time    `gorm:"time" json:"updated_on,omitempty"`
-	ClosedOn            *time.Time   `gorm:"time" json:"closed_on,omitempty"`
+	Project             RedmineAPIObject  `gorm:"text" json:"project,omitempty"`
+	Tracker             RedmineAPIObject  `gorm:"text" json:"tracker,omitempty"`
+	IssueStatus         RedmineAPIObject  `gorm:"text" json:"status,omitempty"`
+	Priority            RedmineAPIObject  `gorm:"text" json:"priority,omitempty"`
+	Author              RedmineAPIObject  `gorm:"text" json:"author,omitempty"`
+	AssignedTo          *RedmineAPIObject `gorm:"text" json:"assigned_to,omitempty"`
+	StartDate           RedmineDate       `gorm:"time" json:"start_date,omitempty"`
+	DueDate             *RedmineDate      `gorm:"time" json:"due_date,omitempty"`
+	DoneRatio           int               `gorm:"int" json:"done_ratio,omitempty"`
+	IsPrivate           bool              `gorm:"bool" json:"is_private,omitempty"`
+	EstimatedHours      *time.Time        `gorm:"time" json:"estimated_hours,omitempty"`
+	TotalEstimatedHours *time.Time        `gorm:"time" json:"total_estimated_hours,omitempty"`
+	SpentHours          float64           `gorm:"float" json:"spent_hours,omitempty"`
+	TotalSpentHours     float64           `gorm:"float" json:"total_spent_hours,omitempty"`
+	CreatedOn           time.Time         `gorm:"time" json:"created_on,omitempty"`
+	UpdatedOn           time.Time         `gorm:"time" json:"updated_on,omitempty"`
+	ClosedOn            *time.Time        `gorm:"time" json:"closed_on,omitempty"`
 
 	ProjectIdentifier string `gorm:"text"`          // internal use
 	Hostname          string `gorm:"text"`          // internal use
