@@ -486,7 +486,8 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 
 		var updateIssue Issue
 		updateIssue.Notes = issue.Notes
-		if issueResp.Issue.AssignedTo == nil {
+		// if issue is assigned and status is not closed update the status
+		if issueResp.Issue.AssignedTo == nil || issueResp.Issue.AssignedTo != nil && issue.StatusId != IssueStatus.Closed {
 			updateIssue.StatusId = issue.StatusId
 		}
 
