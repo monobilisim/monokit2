@@ -30,7 +30,7 @@ echo "pool2 ONLINE 98%"`
 	if os.IsNotExist(err) || zpoolPathExists.IsDir() {
 		err := os.MkdirAll(filepath.Dir(zpoolPath), 0755)
 		if err != nil {
-			t.Fatalf("Failed to create directory for mock zpool script: %v", err)
+			t.Errorf("Failed to create directory for mock zpool script: %v", err)
 		}
 	}
 
@@ -38,7 +38,7 @@ echo "pool2 ONLINE 98%"`
 
 	err = os.WriteFile(zpoolPath, []byte(mockZpoolUnhealthy), 0755)
 	if err != nil {
-		t.Fatalf("Failed to write mock zpool script: %v", err)
+		t.Errorf("Failed to write mock zpool script: %v", err)
 	}
 
 	t.Log("Testing unhealthy ZFS pools...")
@@ -51,7 +51,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Zulip alarm: %v", err)
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
 	}
 
 	if lastAlarm.Status != down {
@@ -60,7 +60,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if lastIssue.Status != down {
@@ -71,7 +71,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Zulip alarm: %v", err)
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
 	}
 
 	if lastAlarm.Status != down {
@@ -80,7 +80,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastIssue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if lastIssue.Status != down {
@@ -89,7 +89,7 @@ echo "pool2 ONLINE 98%"`
 
 	err = os.WriteFile(zpoolPath, []byte(mockZpoolHealthy), 0755)
 	if err != nil {
-		t.Fatalf("Failed to write mock zpool script: %v", err)
+		t.Errorf("Failed to write mock zpool script: %v", err)
 	}
 
 	t.Log("Testing healthy ZFS pools...")
@@ -102,7 +102,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Zulip alarm: %v", err)
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
 	}
 
 	if lastAlarm.Status != up {
@@ -111,7 +111,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastIssue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if lastIssue.Status != up {
@@ -122,7 +122,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Zulip alarm: %v", err)
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
 	}
 
 	if lastAlarm.Status != up {
@@ -131,7 +131,7 @@ echo "pool2 ONLINE 98%"`
 
 	lastIssue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if lastIssue.Status != up {

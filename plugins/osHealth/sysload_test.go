@@ -56,7 +56,7 @@ func TestCheckSystemLoad(t *testing.T) {
 
 	// Wait for load to rise above limit
 	// Load average is a moving average, so it takes time to rise.
-	timeout := time.After(1 * time.Minute)
+	timeout := time.After(30 * time.Second)
 	ticker := time.NewTicker(2 * time.Second)
 
 	loadHigh := false
@@ -94,7 +94,7 @@ WaitForLoadHigh:
 	alarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
 		cleanup()
-		t.Fatalf("Failed to get last alarm: %v", err)
+		t.Errorf("Failed to get last alarm: %v", err)
 	}
 
 	if alarm.Status != down {
@@ -105,7 +105,7 @@ WaitForLoadHigh:
 	issue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
 		cleanup()
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if issue.Status != down {
@@ -158,7 +158,7 @@ WaitForLoadLow:
 	// Verify UP alarm was created
 	alarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last alarm: %v", err)
+		t.Errorf("Failed to get last alarm: %v", err)
 	}
 
 	if alarm.Status != up {
@@ -168,7 +168,7 @@ WaitForLoadLow:
 	// Verify UP Redmine issue was created (or updated)
 	issue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last Redmine issue: %v", err)
+		t.Errorf("Failed to get last Redmine issue: %v", err)
 	}
 
 	if issue.Status != up {

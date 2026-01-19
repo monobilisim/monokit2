@@ -59,7 +59,7 @@ func TestCheckSystemRAM(t *testing.T) {
 	// Verify DOWN alarm was created
 	alarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last alarm: %v", err)
+		t.Errorf("Failed to get last alarm: %v", err)
 	}
 
 	if alarm.Status != down {
@@ -96,7 +96,7 @@ WaitForRam:
 	// Verify UP alarm was created
 	alarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
-		t.Fatalf("Failed to get last alarm: %v", err)
+		t.Errorf("Failed to get last alarm: %v", err)
 	}
 
 	if alarm.Status != up {
