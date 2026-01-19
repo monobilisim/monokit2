@@ -518,7 +518,7 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 
 		var updateIssue Issue
 		updateIssue.Notes = issue.Notes
-		if issueResp.Issue.AssignedToId == "" {
+		if issueResp.Issue.AssignedTo == nil {
 			updateIssue.StatusId = issue.StatusId
 		}
 

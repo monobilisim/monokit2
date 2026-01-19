@@ -41,16 +41,35 @@ type ZulipAlarm struct {
 
 type Issue struct {
 	gorm.Model
-	TableId           uint   `gorm:"primaryKey;autoIncrement"`
-	Id                int    `gorm:"int" json:"id,omitempty"`
-	Notes             string `gorm:"text" json:"notes,omitempty"`
-	ProjectId         string `gorm:"text" json:"project_id,omitempty"`
-	TrackerId         int    `gorm:"int" json:"tracker_id,omitempty"`
-	Description       string `gorm:"text" json:"description,omitempty"`
-	Subject           string `gorm:"text" json:"subject,omitempty"`
-	PriorityId        int    `gorm:"int" json:"priority_id,omitempty"`
-	StatusId          int    `gorm:"int" json:"status_id,omitempty"`
-	AssignedToId      string `gorm:"text" json:"assigned_to_id,omitempty"`
+	TableId      uint   `gorm:"primaryKey;autoIncrement"`
+	Id           int    `gorm:"int" json:"id,omitempty"`
+	Notes        string `gorm:"text" json:"notes,omitempty"`
+	ProjectId    string `gorm:"text" json:"project_id,omitempty"`
+	TrackerId    int    `gorm:"int" json:"tracker_id,omitempty"`
+	Description  string `gorm:"text" json:"description,omitempty"`
+	Subject      string `gorm:"text" json:"subject,omitempty"`
+	PriorityId   int    `gorm:"int" json:"priority_id,omitempty"`
+	StatusId     int    `gorm:"int" json:"status_id,omitempty"`
+	AssignedToId string `gorm:"text" json:"assigned_to_id,omitempty"`
+
+	Project             string     `gorm:"text" json:"project,omitempty"`
+	Tracker             string     `gorm:"text" json:"tracker,omitempty"`
+	IssueStatus         string     `gorm:"text" json:"status,omitempty"`
+	Priority            string     `gorm:"text" json:"priority,omitempty"`
+	Author              string     `gorm:"text" json:"author,omitempty"`
+	AssignedTo          *string    `gorm:"text" json:"assigned_to,omitempty"`
+	StartDate           time.Time  `gorm:"time" json:"start_date,omitempty"`
+	DueDate             *time.Time `gorm:"time" json:"due_date,omitempty"`
+	DoneRatio           int        `gorm:"int" json:"done_ratio,omitempty"`
+	IsPrivate           bool       `gorm:"bool" json:"is_private,omitempty"`
+	EstimatedHours      *time.Time `gorm:"time" json:"estimated_hours,omitempty"`
+	TotalEstimatedHours *time.Time `gorm:"time" json:"total_estimated_hours,omitempty"`
+	SpentHours          float64    `gorm:"float" json:"spent_hours,omitempty"`
+	TotalSpentHours     float64    `gorm:"float" json:"total_spent_hours,omitempty"`
+	CreatedOn           time.Time  `gorm:"time" json:"created_on,omitempty"`
+	UpdatedOn           time.Time  `gorm:"time" json:"updated_on,omitempty"`
+	ClosedOn            *time.Time `gorm:"time" json:"closed_on,omitempty"`
+
 	ProjectIdentifier string `gorm:"text"`          // internal use
 	Hostname          string `gorm:"text"`          // internal use
 	Status            string `gorm:"text" json:"-"` // down or up
