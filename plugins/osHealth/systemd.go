@@ -73,6 +73,9 @@ func CheckSystemInit(logger zerolog.Logger) {
 			continue
 		}
 
+		// more than 1 service can be down at same time. while Zulip webhooks working like fire and forget, Redmine tickets does not.
+		serviceModule := fmt.Sprintf("%s-unit", strings.TrimSuffix(service.Name, ".service"))
+
 		// if service started in last 60 seconds that means it has restarted
 		if savedService.Uptime > service.Uptime && service.Uptime > 0 && savedService.Uptime-service.Uptime < 60 {
 			logger.Debug().Msgf("Service %s has restarted. Previous uptime: %d seconds, Current uptime: %d seconds", service.Name, savedService.Uptime, service.Uptime)
@@ -109,7 +112,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 				serviceLogs = fmt.Sprintf("Could not get logs for the service %s from systemd.", service.Name)
 			}
 
-			lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+			lastIssue, err := lib.GetLastRedmineIssue(pluginName, serviceModule)
 
 			var issue lib.Issue
 
@@ -122,7 +125,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 					StatusId:          lib.IssueStatus.Feedback,
 					PriorityId:        lib.IssuePriority.Urgent,
 					Service:           pluginName,
-					Module:            moduleName,
+					Module:            serviceModule,
 					Status:            down,
 				}
 			} else {
@@ -134,7 +137,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 					StatusId:          lib.IssueStatus.Feedback,
 					PriorityId:        lib.IssuePriority.Urgent,
 					Service:           pluginName,
-					Module:            moduleName,
+					Module:            serviceModule,
 					Status:            down,
 				}
 			}
@@ -165,7 +168,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 				}
 			}
 
-			lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+			lastIssue, err := lib.GetLastRedmineIssue(pluginName, serviceModule)
 
 			if lastIssue.Status == down {
 				issue := lib.Issue{
@@ -176,7 +179,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 					StatusId:          lib.IssueStatus.Closed,
 					PriorityId:        lib.IssuePriority.Urgent,
 					Service:           pluginName,
-					Module:            moduleName,
+					Module:            serviceModule,
 					Status:            up,
 				}
 
