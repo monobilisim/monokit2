@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -87,6 +89,8 @@ func CheckSystemInit(logger zerolog.Logger) {
 			}
 		}
 
+		issueSubject := fmt.Sprintf("%s için %s servisi çalışmıyor", lib.GlobalConfig.Hostname, service.Name)
+
 		if service.ActiveState != "active" && savedService.ActiveState == "active" {
 			logger.Debug().Msgf("Service %s is down. Current state: %s", service.Name, service.ActiveState)
 			alarmMessage := fmt.Sprintf("[osHealth] - %s - Service %s is down. Current state: %s", lib.GlobalConfig.Hostname, service.Name, service.ActiveState)
@@ -99,6 +103,43 @@ func CheckSystemInit(logger zerolog.Logger) {
 					logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
 				}
 			}
+
+			serviceLogs, err := GetServiceLogs(service.Name, 200)
+			if err != nil {
+				serviceLogs = fmt.Sprintf("Could not get logs for the service %s from systemd.", service.Name)
+			}
+
+			lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+			var issue lib.Issue
+
+			if lastIssue.Status == up {
+				issue = lib.Issue{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Subject:           issueSubject,
+					Notes:             fmt.Sprintf("Sorun devam ediyor"),
+					StatusId:          lib.IssueStatus.Feedback,
+					PriorityId:        lib.IssuePriority.Urgent,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            down,
+				}
+			} else {
+				issue = lib.Issue{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Subject:           issueSubject,
+					Description:       serviceLogs,
+					StatusId:          lib.IssueStatus.Feedback,
+					PriorityId:        lib.IssuePriority.Urgent,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            down,
+				}
+			}
+
+			lib.CreateRedmineIssue(issue)
 		}
 
 		if service.ActiveState == "active" && savedService.ActiveState != "active" {
@@ -123,8 +164,25 @@ func CheckSystemInit(logger zerolog.Logger) {
 					}
 				}
 			}
-		}
 
+			lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+
+			if lastIssue.Status == down {
+				issue := lib.Issue{
+					ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+					Hostname:          lib.GlobalConfig.Hostname,
+					Subject:           issueSubject,
+					Notes:             fmt.Sprintf("Sorun çözüldü servis durumu %s", service.ActiveState),
+					StatusId:          lib.IssueStatus.Closed,
+					PriorityId:        lib.IssuePriority.Urgent,
+					Service:           pluginName,
+					Module:            moduleName,
+					Status:            up,
+				}
+
+				lib.CreateRedmineIssue(issue)
+			}
+		}
 	}
 }
 
@@ -170,4 +228,35 @@ func GetServiceStatus() ([]SystemdUnit, error) {
 	}
 
 	return statuses, nil
+}
+
+func GetServiceLogs(service string, lines int) (string, error) {
+	if service == "" {
+		return "", fmt.Errorf("service name is empty")
+	}
+	if lines <= 0 {
+		return "", fmt.Errorf("lines must be > 0")
+	}
+
+	cmd := exec.Command(
+		"journalctl",
+		"-u", service,
+		"-n", fmt.Sprintf("%d", lines),
+		"--no-pager",
+	)
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf(
+			"journalctl failed: %w: %s",
+			err,
+			errOut.String(),
+		)
+	}
+
+	return out.String(), nil
 }
