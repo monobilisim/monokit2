@@ -143,7 +143,11 @@ else
 endif
 
 test:
-	@docker build -t tests . && docker run --rm tests
+	@DOCKER_BUILDKIT=1 docker build -t tests .
+	@docker run --rm \
+		-v go-mod-cache:/go/pkg/mod \
+		-v go-build-cache:/root/.cache/go-build \
+		tests
 
 test-get-artifacts:
 	@DOCKER_BUILDKIT=1 docker build -t tests .
