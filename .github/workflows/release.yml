@@ -58,6 +58,19 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
+      - name: Remove Docker (if present)
+        run: |
+          sudo systemctl stop docker || true
+          sudo systemctl disable docker || true
+
+          sudo apt-get remove -y \
+            docker docker-engine docker.io docker-ce docker-ce-cli containerd runc || true
+
+      - name: Install Podman compatibility
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman podman-docker
+
       - name: Run Docker tests
         run: make test
 
