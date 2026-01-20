@@ -144,7 +144,7 @@ endif
 
 test:
 	@DOCKER_BUILDKIT=1 docker build -t tests .
-	@docker run --rm \
+	@docker run --rm -t \
 	    --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \
@@ -155,7 +155,7 @@ test:
 test-get-artifacts:
 	@DOCKER_BUILDKIT=1 docker build -t tests .
 ifeq ($(strip TESTNAME),)
-	@docker run --rm \
+	@docker run --rm -t \
 	    --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \
@@ -166,7 +166,7 @@ ifeq ($(strip TESTNAME),)
 		-e HOST_GID=$(shell id -g) \
 		tests
 else
-	@docker run --rm \
+	@docker run --rm -t \
         --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \

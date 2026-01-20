@@ -19,8 +19,8 @@ ExecStart=/bin/sh -c '\
   systemctl poweroff; \
   exit $$EXIT_CODE'
 
-StandardOutput=journal
-StandardError=journal
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target

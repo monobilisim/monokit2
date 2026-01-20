@@ -74,6 +74,12 @@ jobs:
       - name: Run Docker tests
         run: make test
 
+      - name: Upload monokit2.db artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: monokit2-db
+          path: ./logs/test/monokit2.db
+
   release:
     needs: build
     runs-on: ubuntu-latest
