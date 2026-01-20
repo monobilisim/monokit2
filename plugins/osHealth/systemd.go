@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type SystemdUnits = lib.SystemdUnits
+type SystemdUnit = lib.SystemdUnit
 
 func CheckSystemInit(logger zerolog.Logger) {
 	var moduleName string = "systemd"
@@ -29,7 +29,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 	for _, service := range services {
 		matched := false
 		for _, pattern := range lib.OsHealthConfig.ServiceHealthAlarm.Services {
-			if match, _ := filepath.Match(pattern, service.Name); match {
+			if match, _ := filepath.Match(pattern, strings.TrimSuffix(service.Name, ".service")); match {
 				matched = true
 				break
 			}
@@ -39,14 +39,15 @@ func CheckSystemInit(logger zerolog.Logger) {
 			continue
 		}
 
-		var existingService SystemdUnits
-		err := lib.DB.Model(&SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&existingService).Error
-		if err != nil {
+		var existingService SystemdUnit
+		// using Take, First or Scan logs out "no record found"
+		tx := lib.DB.Model(&SystemdUnit{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Find(&existingService)
+		if tx.Error != nil {
 			logger.Error().Err(err).Msg("Failed to check if service exists in database")
 		}
 
-		if existingService.Name != service.Name {
-			err := lib.DB.Create(&SystemdUnits{
+		if tx.RowsAffected == 0 {
+			err := lib.DB.Create(&SystemdUnit{
 				ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 				Hostname:          lib.GlobalConfig.Hostname,
 				Name:              service.Name,
@@ -63,9 +64,8 @@ func CheckSystemInit(logger zerolog.Logger) {
 			continue
 		}
 
-		var savedService SystemdUnits
-
-		err = lib.DB.Model(&SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&savedService).Error
+		var savedService SystemdUnit
+		err = lib.DB.Model(&SystemdUnit{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).First(&savedService).Error
 		if err != nil {
 			logger.Error().Err(err).Msgf("Failed to get current service %s from database", service.Name)
 			continue
@@ -79,7 +79,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 
 			if err == nil {
-				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+				err = lib.DB.Model(&lib.SystemdUnit{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
 
 				if err != nil {
 					logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
@@ -93,7 +93,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 
 			err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 			if err == nil {
-				err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+				err = lib.DB.Model(&lib.SystemdUnit{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
 
 				if err != nil {
 					logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
@@ -116,7 +116,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 
 				err := lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 				if err == nil {
-					err = lib.DB.Model(&lib.SystemdUnits{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
+					err = lib.DB.Model(&lib.SystemdUnit{}).Where("name = ? AND project_identifier = ?", service.Name, lib.GlobalConfig.ProjectIdentifier).Updates(service).Error
 
 					if err != nil {
 						logger.Error().Err(err).Msgf("Failed to update service %s in database", service.Name)
@@ -128,7 +128,7 @@ func CheckSystemInit(logger zerolog.Logger) {
 	}
 }
 
-func GetServiceStatus() ([]SystemdUnits, error) {
+func GetServiceStatus() ([]SystemdUnit, error) {
 	conn, err := dbus.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to dbus: %v", err)
@@ -140,7 +140,7 @@ func GetServiceStatus() ([]SystemdUnits, error) {
 		return nil, fmt.Errorf("failed to list units: %v", err)
 	}
 
-	var statuses []SystemdUnits
+	var statuses []SystemdUnit
 
 	for _, unit := range units {
 		if !strings.HasSuffix(unit.Name, ".service") {
@@ -152,7 +152,7 @@ func GetServiceStatus() ([]SystemdUnits, error) {
 			continue
 		}
 
-		status := SystemdUnits{
+		status := SystemdUnit{
 			Name:        unit.Name,
 			LoadState:   unit.LoadState,
 			ActiveState: unit.ActiveState,

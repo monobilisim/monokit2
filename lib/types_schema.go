@@ -15,7 +15,7 @@ type Version struct {
 	Status       string `gorm:"text" json:"status"`        // installed, not-installed
 }
 
-type SystemdUnits struct {
+type SystemdUnit struct {
 	gorm.Model
 	id                uint   `gorm:"primaryKey"`
 	ProjectIdentifier string `gorm:"text"` // internal use

@@ -26,7 +26,7 @@ func InitializeDatabase() error {
 
 	db.AutoMigrate(&Issue{})
 
-	db.AutoMigrate(&SystemdUnits{})
+	db.AutoMigrate(&SystemdUnit{})
 
 	db.AutoMigrate(&Version{})
 
