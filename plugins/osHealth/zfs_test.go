@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,8 +23,7 @@ echo "pool2  ONLINE  8%"`
 echo "pool1  DEGRADED  0%"
 echo "pool2 ONLINE 98%"`
 
-	homeDir, _ := os.UserHomeDir()
-	zpoolPath := filepath.Join(homeDir, ".local/bin/zpool")
+	zpoolPath := "/usr/local/bin/zpool"
 	zpoolPathExists, err := os.Stat(zpoolPath)
 	if os.IsNotExist(err) || zpoolPathExists.IsDir() {
 		err := os.MkdirAll(filepath.Dir(zpoolPath), 0755)
@@ -33,8 +31,6 @@ echo "pool2 ONLINE 98%"`
 			t.Errorf("Failed to create directory for mock zpool script: %v", err)
 		}
 	}
-
-	os.Setenv("PATH", fmt.Sprintf("%s/.local/bin", homeDir)+":"+os.Getenv("PATH"))
 
 	err = os.WriteFile(zpoolPath, []byte(mockZpoolUnhealthy), 0755)
 	if err != nil {
