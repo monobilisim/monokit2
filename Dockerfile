@@ -1,14 +1,21 @@
 FROM golang:1.25-trixie
 
+ENV container=docker
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CGO_ENABLED=1
+
 WORKDIR /app
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        e2fsprogs && \
+        e2fsprogs \
+        systemd \
+        systemd-sysv \
+        dbus && \
     rm -rf /var/lib/apt/lists/*
 
-ENV CGO_ENABLED=1
+STOPSIGNAL SIGRTMIN+3
 
 COPY go.mod go.sum ./
 
@@ -22,4 +29,9 @@ RUN mkdir -p /etc/mono && \
     cp config/* /etc/mono && \
     chmod +x scripts/collect-test-artifacts.sh
 
-CMD [ "sh", "-c", "make test-must-run-on-docker; EXIT_CODE=$?; ./scripts/collect-test-artifacts.sh; exit $EXIT_CODE" ]
+COPY scripts/docker-tests.service /etc/systemd/system/docker-tests.service
+COPY scripts/exit.target /etc/systemd/system/exit.target
+COPY scripts/exit-code.service /etc/systemd/system/exit-code.service
+RUN systemctl enable docker-tests.service exit-code.service
+
+ENTRYPOINT ["/sbin/init"]

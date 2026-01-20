@@ -119,11 +119,11 @@ ifeq ($(strip $(TESTNAME)),)
     fi
 	@./bin/monokit2 reset --force
 	@./bin/monokit2
-	@TEST=true go test
+	@TEST=true go test -v 2>&1 | tee -a /var/log/monokit2.log
 
 	@for plugin in $(ACTIVE_PLUGINS); do \
 	    cd plugins/$$plugin; \
-		TEST=true go test -tags $$plugin; \
+		TEST=true go test -v -tags $$plugin 2>&1 | tee -a /var/log/monokit2.log; \
 		cd ../..; \
 	done;
 else
@@ -133,11 +133,11 @@ else
     fi
 	@./bin/monokit2 reset --force
 	@./bin/monokit2
-	@TEST=true go test -v -run "$(TESTNAME)" 2>&1 | tee -a /var/lib/monokit2.log
+	@TEST=true go test -v -run "$(TESTNAME)" 2>&1 | tee -a /var/log/monokit2.log
 
 	@for plugin in $(ACTIVE_PLUGINS); do \
 	    cd plugins/$$plugin; \
-		TEST=true go test -v -tags $$plugin -run "$(TESTNAME)" 2>&1 | tee -a /var/lib/monokit2.log ; \
+		TEST=true go test -v -tags $$plugin -run "$(TESTNAME)" 2>&1 | tee -a /var/log/monokit2.log ; \
 		cd ../..; \
 	done;
 endif
@@ -145,6 +145,9 @@ endif
 test:
 	@DOCKER_BUILDKIT=1 docker build -t tests .
 	@docker run --rm \
+	    --systemd=always \
+        --tmpfs /run \
+        --tmpfs /run/lock \
 		-v go-mod-cache:/go/pkg/mod \
 		-v go-build-cache:/root/.cache/go-build \
 		tests
@@ -153,6 +156,9 @@ test-get-artifacts:
 	@DOCKER_BUILDKIT=1 docker build -t tests .
 ifeq ($(strip TESTNAME),)
 	@docker run --rm \
+	    --systemd=always \
+        --tmpfs /run \
+        --tmpfs /run/lock \
 		-v go-mod-cache:/go/pkg/mod \
 		-v go-build-cache:/root/.cache/go-build \
 		-v $(realpath ./logs/test):/artifacts \
@@ -161,6 +167,9 @@ ifeq ($(strip TESTNAME),)
 		tests
 else
 	@docker run --rm \
+        --systemd=always \
+        --tmpfs /run \
+        --tmpfs /run/lock \
 		-v go-mod-cache:/go/pkg/mod \
 		-v go-build-cache:/root/.cache/go-build \
 		-v $(realpath ./logs/test):/artifacts \

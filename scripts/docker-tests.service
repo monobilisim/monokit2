@@ -1,0 +1,26 @@
+[Unit]
+Description=Run systemd-dependent Docker tests
+After=multi-user.target systemd-journald.service
+Requires=systemd-journald.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/app
+Environment="PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="GOPATH=/go"
+Environment="GOCACHE=/root/.cache/go-build"
+PassEnvironment=TESTNAME HOST_UID HOST_GID
+
+ExecStart=/bin/sh -c '\
+  make test-must-run-on-docker TESTNAME=$TESTNAME; \
+  EXIT_CODE=$$?; \
+  echo $$EXIT_CODE > /run/test-exit-code; \
+  ./scripts/collect-test-artifacts.sh; \
+  systemctl poweroff; \
+  exit $$EXIT_CODE'
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
