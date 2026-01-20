@@ -72,7 +72,7 @@ jobs:
           sudo apt-get install -y podman podman-docker
 
       - name: Run Docker tests
-        run: make test
+        run: make test-get-artifacts
 
       - name: Upload monokit2.db artifact
         uses: actions/upload-artifact@v6
