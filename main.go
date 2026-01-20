@@ -106,6 +106,7 @@ func main() {
 						fmt.Printf("Error deleting logs: %v\n", err)
 						return
 					}
+					return
 				} else {
 					fmt.Println("Aborting...")
 					return
