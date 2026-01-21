@@ -23,8 +23,9 @@ We suggest using `monokit2 reset` to start from empty db and config files for ea
 
 ### Alerts supported plugins and modules:
 - osHealth:
-  - disk: Zulip, Redmine
+  - disk: Zulip, Redmine // supported filesystems are ext4, ext3, ext2, xfs, btrfs, fat32, vfat
   - system load: Zulip, Redmine
   - memory: Zulip
   - zfs: Zulip, Redmine
-  - systemd: Zulip
+  - systemd: Zulip, Redmine
+  - version: Redmine news

@@ -59,7 +59,7 @@ var issue lib.Issue
 // Because how Redmine works make sure subject is always the same, for variable values use Description or Notes fields
 // Description is used when creating a new issue
 // Notes is used when updating an existing issue
-issueSubject := fmt.Sprintf("%s için sistem yükü %.2f üstüne çıktı", lib.GlobalConfig.Hostname, loadLimit)
+issueSubject := fmt.Sprintf("System load %.2f exceeded on host %s", loadLimit, lib.GlobalConfig.Hostname)
 
 if lastIssue.Status == up {
 // Last issue is up and now we have a down situation for same Subject, so we update the issue with Notes
@@ -67,7 +67,7 @@ if lastIssue.Status == up {
 		ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 		Hostname:          lib.GlobalConfig.Hostname,
 		Subject:           issueSubject,
-		Notes:             fmt.Sprintf("Sorun devam ediyor, sistem yükü %.2f", loadAverage.Load1),
+		Notes:             fmt.Sprintf("Issue still going, system load %.2f", loadAverage.Load1),
 		StatusId:          lib.IssueStatus.Feedback,
 		PriorityId:        lib.IssuePriority.Urgent,
 		Service:           pluginName,
@@ -116,7 +116,7 @@ if lastIssue.Status == down {
 		ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
 		Hostname:          lib.GlobalConfig.Hostname,
 		Subject:           issueSubject,
-		Notes:             fmt.Sprintf("Sistem yükü normale döndü (%.2f)", loadAverage.Load1),
+		Notes:             fmt.Sprintf("System load returned to normal (%.2f)", loadAverage.Load1),
 		PriorityId:        lib.IssuePriority.Urgent,
 		StatusId:          lib.IssueStatus.Closed,
 		Service:           pluginName,
@@ -201,3 +201,20 @@ After writing the plugin if you want to create devel builds of it from CI/CD you
 	# to
   ACTIVE_PLUGINS := osHealth pluginName
 ```
+
+How to test
+
+We use Golang's stdlib testing library for our tests.
+
+Because of software requirements, we do not use unit tests. All tests are running inside a Debian podman container.
+
+For testing install podman 5.6 or newer with podman-docker compatibility layer.
+
+Testing whole stack
+make test
+
+Testing whole stack with outputing logs to "./logs/test/monokit2.log"
+make test-get-artifacts
+
+Testing only a single function
+make test-get-artifacts TESTNAME=TestCheckSystemInit
