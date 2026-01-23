@@ -32,3 +32,10 @@ type ApplicationVersion struct {
 	Name    string
 	Version string
 }
+
+type PowerStatus struct {
+	Action            string // "shutdown", "restart", "none"
+	ScheduledAt       string // ISO 8601 timestamp if scheduled
+	Uptime            string // System uptime
+	RecentlyRestarted bool
+}

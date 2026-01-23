@@ -66,6 +66,10 @@ func main() {
 	if lib.OsHealthConfig.ServiceHealthAlarm.Enabled && hasSystemd() {
 		CheckSystemInit(logger)
 	}
+
+	if lib.OsHealthConfig.PowerAlarm.Enabled {
+		CheckSystemPowerHealth(logger)
+	}
 }
 
 // checks if there is an active ZFS pool

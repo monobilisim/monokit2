@@ -35,3 +35,7 @@ service-health-alarm:
   #  - "postgres*"
   #  - "mysql"
   #  - "nginx"
+
+# Zulip alarms for restarts and shutdown schedules
+power-alarm:
+  enabled: true

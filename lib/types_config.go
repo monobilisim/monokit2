@@ -70,6 +70,10 @@ type OsHealthConfigType struct {
 		Enabled  bool     `yaml:"enabled"`
 		Services []string `yaml:"services"`
 	} `yaml:"service-health-alarm"`
+
+	PowerAlarm struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"power-alarm"`
 }
 
 type UfwApplyConfigType struct {
