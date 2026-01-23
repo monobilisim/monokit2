@@ -143,8 +143,8 @@ else
 endif
 
 test:
-	@DOCKER_BUILDKIT=1 docker build -t tests .
-	@docker run --rm -t \
+	@podman build -t tests .
+	@podman run --rm -t \
 	    --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \
@@ -153,9 +153,9 @@ test:
 		tests
 
 test-get-artifacts:
-	@DOCKER_BUILDKIT=1 docker build -t tests .
+	@podman build -t tests .
 ifeq ($(strip TESTNAME),)
-	@docker run --rm -t \
+	@podman run --rm -t \
 	    --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \
@@ -166,7 +166,7 @@ ifeq ($(strip TESTNAME),)
 		-e HOST_GID=$(shell id -g) \
 		tests
 else
-	@docker run --rm -t \
+	@podman run --rm -t \
         --systemd=always \
         --tmpfs /run \
         --tmpfs /run/lock \
