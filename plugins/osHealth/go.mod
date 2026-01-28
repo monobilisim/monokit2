@@ -7,7 +7,7 @@ replace github.com/monobilisim/monokit2 => ../../
 replace github.com/monobilisim/monokit2/plugins/osHealth/vlib => ./vlib
 
 require (
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/monobilisim/monokit2 v0.0.0-00010101000000-000000000000
 	github.com/monobilisim/monokit2/plugins/osHealth/vlib v0.0.0-00010101000000-000000000000
 	github.com/rs/zerolog v1.34.0
