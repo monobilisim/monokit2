@@ -185,7 +185,11 @@ clean:
 		for f in ./bin/*; do \
 			[ -e "$$f" ] || continue; \
 			echo "  removing $$f"; \
-			rm -f "$$f"; \
+			if [ -d "$$f" ]; then \
+				rm -rf "$$f"; \
+			else \
+				rm -f "$$f"; \
+			fi; \
 		done; \
 	fi
 
@@ -194,6 +198,10 @@ clean:
 		for f in plugins/bin/*; do \
 			[ -e "$$f" ] || continue; \
 			echo "  removing $$f"; \
-			rm -f "$$f"; \
+			if [ -d "$$f" ]; then \
+				rm -rf "$$f"; \
+			else \
+				rm -f "$$f"; \
+			fi; \
 		done; \
 	fi

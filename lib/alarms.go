@@ -475,6 +475,7 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
 			return result.Error
 		}
+		return nil
 	}
 
 	if !IsTestMode() {
@@ -484,11 +485,35 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 			return err
 		}
 
+		isAssigned := issueResp.Issue.AssignedTo != nil
+		isClosing := issue.StatusId == IssueStatus.Closed
+
+		Logger.Debug().
+			Int("issue_id", issueId).
+			Bool("is_assigned", isAssigned).
+			Bool("is_closing", isClosing).
+			Int("new_status_id", issue.StatusId).
+			Str("notes", issue.Notes).
+			Msg("Preparing to update Redmine issue")
+
 		var updateIssue Issue
-		updateIssue.Notes = issue.Notes
-		// if issue is assigned and status is not closed update the status
-		if issueResp.Issue.AssignedTo == nil || issueResp.Issue.AssignedTo != nil && issue.StatusId != IssueStatus.Closed {
+
+		// Always add notes if provided
+		if issue.Notes != "" {
+			updateIssue.Notes = issue.Notes
+		}
+
+		// Update status logic:
+		// - If unassigned: always update status (can update to any status including Closed)
+		// - If assigned: can update status to Urgent/Feedback/etc but CANNOT set to Closed
+		//   (don't auto-close assigned issues - someone is working on it)
+		shouldUpdateStatus := !isAssigned || !isClosing
+
+		if shouldUpdateStatus {
 			updateIssue.StatusId = issue.StatusId
+			Logger.Debug().Int("issue_id", issueId).Int("new_status_id", issue.StatusId).Msg("Will update status")
+		} else {
+			Logger.Info().Int("issue_id", issueId).Msg("Skipping status update: issue is assigned and trying to close")
 		}
 
 		var updateData RedmineIssue
@@ -497,7 +522,11 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 		jsonBody, err := json.Marshal(updateData)
 		if err != nil {
 			Logger.Error().Err(err).Msg("Failed to marshal issue update request")
+			return err
 		}
+
+		Logger.Debug().Int("issue_id", issueId).Str("json_payload", string(jsonBody)).Msg("Sending update to Redmine")
+
 		updateUrl := fmt.Sprintf("%s/issues/%d.json", GlobalConfig.Redmine.Url, issueId)
 		req, err := http.NewRequest("PUT", updateUrl, bytes.NewBuffer(jsonBody))
 		if err != nil {
@@ -523,13 +552,15 @@ func updateRedmineIssueStatus(issueId int, issue Issue) error {
 			return fmt.Errorf("failed to update issue, status code: %d", resp.StatusCode)
 		}
 
+		Logger.Info().Int("issue_id", issueId).Int("status_code", resp.StatusCode).Msg("Successfully updated Redmine issue via API")
+
 		result := DB.Create(&issue)
 		if result.Error != nil {
 			Logger.Error().Err(result.Error).Int("issue_id", issue.Id).Msg("Failed to store issue in local database")
 		}
 	}
 
-	Logger.Info().Int("issue_id", issueId).Int("status_id", issue.StatusId).Msg("Successfully updated Redmine issue status")
+	Logger.Info().Int("issue_id", issueId).Int("status_id", issue.StatusId).Str("status", issue.Status).Msg("Successfully updated Redmine issue status")
 	return nil
 }
 
