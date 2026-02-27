@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: go-binaries
           path: |
@@ -67,7 +67,7 @@ jobs:
         run: make test-get-artifacts
 
       - name: Upload monokit2.db artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: monokit2-db
           path: ./logs/test/monokit2.db
