@@ -16,6 +16,7 @@ var PluginsDir string
 var GlobalConfig GlobalConfigType
 var OsHealthConfig OsHealthConfigType
 var UfwApplyConfig UfwApplyConfigType
+var DBConfig DBConfigType
 
 func InitConfig(configFiles ...string) error {
 	if _, err := os.Stat("/etc/mono"); os.IsNotExist(err) {
@@ -90,6 +91,25 @@ func InitConfig(configFiles ...string) error {
 				err = yaml.Unmarshal(ufwApplyConfigData, &UfwApplyConfig)
 				if err != nil {
 					return fmt.Errorf("failed to parse ufw configuration file: %w", err)
+				}
+			}
+		case "db.yml":
+			dbConfigExists := false
+			if _, err := os.Stat("/etc/mono/db.yml"); err == nil {
+				dbConfigExists = true
+			} else {
+				return fmt.Errorf("db configuration file does not exist")
+			}
+
+			if dbConfigExists {
+				dbConfigData, err := os.ReadFile("/etc/mono/db.yml")
+				if err != nil {
+					return fmt.Errorf("failed to read db configuration file: %w", err)
+				}
+
+				err = yaml.Unmarshal(dbConfigData, &DBConfig)
+				if err != nil {
+					return fmt.Errorf("failed to parse db configuration file: %w", err)
 				}
 			}
 		}

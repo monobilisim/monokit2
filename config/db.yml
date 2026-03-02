@@ -1,0 +1,47 @@
+# Not implemented yet
+mysql:
+  enabled: true
+  process-limit: 50
+  credentials:
+    user: "root"
+    password: "password"
+    host: "localhost"
+    port: 3306
+    dbname: "db"
+    network: "tcp"
+    socket: "/var/run/mysqld/mysqld.sock"
+    allow_native_passwords: true
+  cluster:
+    enabled: false
+    cluster_type: "" # ndb, xtradb
+    size: 3
+    check_table_day: "Sun"
+    check_table_hour: "05:00"
+    receive_queue_limit: 10
+    flow_control_limit: 0.20
+  alarm:
+    enabled: true
+
+# Not Implemented Yet
+mariadb:
+  enabled: true
+  process-limit: 50
+  galera-cluster:
+    enabled: false
+    size: 3
+    check_table_day: "Sun"
+    check_table_hour: "05:00"
+    receive_queue_limit: 10
+    flow_control_limit: 0.20
+  alarm:
+    enabled: true
+
+# Not Implemented Yet
+postgres:
+  limits:
+    process: 50
+    query: 25
+    conn_percent: 70
+  alarm:
+    enabled: true
+  leader_switch_hook: "echo 'leader switch'"

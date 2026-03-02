@@ -91,3 +91,34 @@ type UfwApplyConfigType struct {
 	} `yaml:"static-rules"`
 	RulesetDir string `yaml:"ruleset-dir"`
 }
+
+type DBConfigType struct {
+	Mysql struct {
+		Enabled      bool `yaml:"enabled"`
+		ProcessLimit int  `yaml:"process-limit"`
+		Credentials  struct {
+			User                 string `yaml:"user"`
+			Password             string `yaml:"password"`
+			Host                 string `yaml:"host"`
+			Port                 int    `yaml:"port"`
+			DBName               string `yaml:"dbname"`
+			Network              string `yaml:"network"`
+			Socket               string `yaml:"socket"`
+			AllowNativePasswords bool   `yaml:"allow_native_passwords"`
+		} `yaml:"credentials"`
+
+		Cluster struct {
+			Enabled           bool    `yaml:"enabled"`
+			ClusterType       string  `yaml:"cluster_type"` // ndb, xtradb
+			Size              int     `yaml:"size"`
+			CheckTableDay     string  `yaml:"check_table_day"`
+			CheckTableHour    string  `yaml:"check_table_hour"`
+			ReceiveQueueLimit int     `yaml:"receive_queue_limit"`
+			FlowControlLimit  float64 `yaml:"flow_control_limit"`
+		} `yaml:"cluster"`
+
+		Alarm struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"alarm"`
+	} `yaml:"mysql"`
+}
