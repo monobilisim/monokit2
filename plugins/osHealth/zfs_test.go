@@ -43,6 +43,7 @@ echo "pool2 ONLINE 98%"`
 
 	time.Sleep(5 * time.Second)
 
+	// down test
 	moduleName := "zfsHealth"
 
 	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
@@ -83,6 +84,53 @@ echo "pool2 ONLINE 98%"`
 		t.Errorf("Expected last issue status to be 'down', got '%s'", lastIssue.Status)
 	}
 
+	t.Log("Testing unhealthy ZFS pools again...")
+
+	CheckSystemDiskZFS(lib.Logger)
+
+	time.Sleep(5 * time.Second)
+
+	// issue still occurring
+	moduleName = "zfsHealth"
+
+	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err != nil {
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
+	}
+
+	if lastAlarm.Status != down {
+		t.Errorf("Expected last alarm status to be 'down', got '%s'", lastAlarm.Status)
+	}
+
+	lastIssue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
+	if err != nil {
+		t.Errorf("Failed to get last Redmine issue: %v", err)
+	}
+
+	if lastIssue.Status != down {
+		t.Errorf("Expected last issue status to be 'down', got '%s'", lastIssue.Status)
+	}
+
+	moduleName = "zfsCapacity"
+
+	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err != nil {
+		t.Errorf("Failed to get last Zulip alarm: %v", err)
+	}
+
+	if lastAlarm.Status != down {
+		t.Errorf("Expected last alarm status to be 'down', got '%s'", lastAlarm.Status)
+	}
+
+	lastIssue, err = lib.GetLastRedmineIssue(pluginName, moduleName)
+	if err != nil {
+		t.Errorf("Failed to get last Redmine issue: %v", err)
+	}
+
+	if lastIssue.Status != down {
+		t.Errorf("Expected last issue status to be 'down', got '%s'", lastIssue.Status)
+	}
+
 	err = os.WriteFile(zpoolPath, []byte(mockZpoolHealthy), 0755)
 	if err != nil {
 		t.Errorf("Failed to write mock zpool script: %v", err)
@@ -94,6 +142,7 @@ echo "pool2 ONLINE 98%"`
 
 	time.Sleep(5 * time.Second)
 
+	// up test
 	moduleName = "zfsHealth"
 
 	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
