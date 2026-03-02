@@ -38,6 +38,11 @@ func main() {
 
 	lib.InitializeDatabase()
 
+	if !lib.DBConfig.Mysql.Alarm.Enabled {
+		logger.Info().Msg("MySQL Health monitoring plugin is disabled in configuration. Exiting plugin.")
+		return
+	}
+
 	logger.Info().Msg("Starting MySQL Health monitoring plugin...")
 
 	mysqlConfig := mysql.NewConfig()
@@ -59,6 +64,11 @@ func main() {
 		logger.Error().Err(err).Msg("Failed to ping MySQL database")
 		Connection.Close()
 		Connection = nil
+	}
+
+	if Connection == nil {
+		logger.Error().Msg("MySQL connection is not established. Exiting plugin.")
+		return
 	}
 
 	CheckProcess(logger)

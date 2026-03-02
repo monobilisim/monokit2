@@ -94,8 +94,7 @@ type UfwApplyConfigType struct {
 
 type DBConfigType struct {
 	Mysql struct {
-		Enabled      bool `yaml:"enabled"`
-		ProcessLimit int  `yaml:"process-limit"`
+		ProcessLimit int `yaml:"process-limit"`
 		Credentials  struct {
 			User                 string `yaml:"user"`
 			Password             string `yaml:"password"`

@@ -1,6 +1,5 @@
 # Not implemented yet
 mysql:
-  enabled: true
   process-limit: 50
   credentials:
     user: "root"
