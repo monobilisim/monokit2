@@ -142,6 +142,8 @@ func main() {
 
 	logger.Info().Msg("Logger initialized successfully")
 
+	lib.EnsureShutdownNotifierService(logger)
+
 	err = os.MkdirAll(lib.PluginsDir, 0755)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to create plugins directory")
@@ -171,6 +173,9 @@ func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "shutdownNotifier":
+			lib.HandleShutdownNotifier(os.Args, logger)
+			return
 		case "-i", "--interactive", "interactive", "i", "tui":
 			if err := lib.RunTUI(version); err != nil {
 				fmt.Printf("Error running TUI: %v\n", err)
