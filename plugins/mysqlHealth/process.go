@@ -64,44 +64,46 @@ func CheckProcess(logger zerolog.Logger) {
 				lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
 			}
 
-			if lib.GlobalConfig.Redmine.Enabled {
-				lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+			/*
+				if lib.GlobalConfig.Redmine.Enabled {
+					lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 
-				if err != nil {
-					logger.Error().Err(err).Msg("Failed to get last Redmine issue")
-				}
-
-				var issue lib.Issue
-
-				issueSubject := fmt.Sprintf("%s için MySQL process limiti aşıldı", lib.GlobalConfig.Hostname)
-
-				if lastIssue.Status == up {
-					issue = lib.Issue{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Notes:             "Sorun devam ediyor.",
-						StatusId:          lib.IssueStatus.Feedback,
-						PriorityId:        lib.IssuePriority.Urgent,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            down,
+					if err != nil {
+						logger.Error().Err(err).Msg("Failed to get last Redmine issue")
 					}
-				} else {
-					issue = lib.Issue{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Subject:           issueSubject,
-						Description:       alarmMessage,
-						StatusId:          lib.IssueStatus.Feedback,
-						PriorityId:        lib.IssuePriority.Urgent,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            down,
-					}
-				}
 
-				lib.CreateRedmineIssue(issue)
-			}
+					var issue lib.Issue
+
+					issueSubject := fmt.Sprintf("%s için MySQL process limiti aşıldı", lib.GlobalConfig.Hostname)
+
+					if lastIssue.Status == up {
+						issue = lib.Issue{
+							ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+							Hostname:          lib.GlobalConfig.Hostname,
+							Notes:             "Sorun devam ediyor.",
+							StatusId:          lib.IssueStatus.Feedback,
+							PriorityId:        lib.IssuePriority.Urgent,
+							Service:           pluginName,
+							Module:            moduleName,
+							Status:            down,
+						}
+					} else {
+						issue = lib.Issue{
+							ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+							Hostname:          lib.GlobalConfig.Hostname,
+							Subject:           issueSubject,
+							Description:       alarmMessage,
+							StatusId:          lib.IssueStatus.Feedback,
+							PriorityId:        lib.IssuePriority.Urgent,
+							Service:           pluginName,
+							Module:            moduleName,
+							Status:            down,
+						}
+					}
+
+					lib.CreateRedmineIssue(issue)
+				}
+			*/
 		}
 
 		// UP alarm if process count is below threshold
@@ -120,29 +122,31 @@ func CheckProcess(logger zerolog.Logger) {
 				}
 			}
 
-			if lib.GlobalConfig.Redmine.Enabled {
-				lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
+			/*
+				if lib.GlobalConfig.Redmine.Enabled {
+					lastIssue, err := lib.GetLastRedmineIssue(pluginName, moduleName)
 
-				if err != nil {
-					logger.Error().Err(err).Msg("Failed to get last Redmine issue")
-				}
-
-				if lastIssue.Status == down {
-					issue := lib.Issue{
-						ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
-						Hostname:          lib.GlobalConfig.Hostname,
-						Subject:           fmt.Sprintf("%s için MySQL process limiti aşıldı", lib.GlobalConfig.Hostname),
-						Description:       "Sorun çözüldü.",
-						StatusId:          lib.IssueStatus.Resolved,
-						PriorityId:        lib.IssuePriority.Urgent,
-						Service:           pluginName,
-						Module:            moduleName,
-						Status:            up,
+					if err != nil {
+						logger.Error().Err(err).Msg("Failed to get last Redmine issue")
 					}
 
-					lib.CreateRedmineIssue(issue)
+					if lastIssue.Status == down {
+						issue := lib.Issue{
+							ProjectIdentifier: lib.GlobalConfig.ProjectIdentifier,
+							Hostname:          lib.GlobalConfig.Hostname,
+							Subject:           fmt.Sprintf("%s için MySQL process limiti aşıldı", lib.GlobalConfig.Hostname),
+							Description:       "Sorun çözüldü.",
+							StatusId:          lib.IssueStatus.Resolved,
+							PriorityId:        lib.IssuePriority.Urgent,
+							Service:           pluginName,
+							Module:            moduleName,
+							Status:            up,
+						}
+
+						lib.CreateRedmineIssue(issue)
+					}
 				}
-			}
+			*/
 		}
 	}
 }
