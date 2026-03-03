@@ -1,4 +1,4 @@
-ACTIVE_PLUGINS := osHealth
+ACTIVE_PLUGINS := osHealth mysqlHealth
 VERSION ?= devel
 
 # Example usage:

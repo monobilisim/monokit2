@@ -5,6 +5,7 @@ package main
 import (
 	"database/sql"
 	"os"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	lib "github.com/monobilisim/monokit2/lib"
@@ -53,6 +54,23 @@ func main() {
 
 	if Connection == nil {
 		logger.Error().Msg("MySQL connection is not established. Exiting plugin.")
+		return
+	}
+
+	var isMysql bool
+	var versionComment string
+	err = Connection.QueryRow("SELECT @@version_comment").Scan(&versionComment)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to query MySQL version. Exiting plugin.")
+		return
+	}
+
+	if strings.Contains(strings.ToLower(versionComment), "mysql") {
+		isMysql = true
+	}
+
+	if !isMysql {
+		logger.Error().Msg("Connected database does not appear to be MySQL. Exiting plugin.")
 		return
 	}
 
