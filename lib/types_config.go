@@ -106,6 +106,13 @@ type DBConfigType struct {
 			AllowNativePasswords bool   `yaml:"allow_native_passwords"`
 		} `yaml:"credentials"`
 
+		AutoRepair struct {
+			Enabled bool   `yaml:"enabled"`
+			Day     string `yaml:"day"`  // Mon Tue Wed Thu Fri Sat Sun
+			Hour    string `yaml:"hour"` // 24h format, e.g. 05:00, 17:00
+		} `yaml:"auto-repair"`
+
+		// Not implemented yet, but will be used for future cluster monitoring features
 		Cluster struct {
 			Enabled           bool    `yaml:"enabled"`
 			ClusterType       string  `yaml:"cluster_type"` // ndb, xtradb

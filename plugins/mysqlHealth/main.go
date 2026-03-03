@@ -80,4 +80,8 @@ func main() {
 	}
 
 	CheckProcess(logger)
+
+	if lib.DBConfig.Mysql.AutoRepair.Enabled {
+		AutoRepair(logger)
+	}
 }

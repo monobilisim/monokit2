@@ -1,6 +1,7 @@
-# Not implemented yet
 mysql:
+  # Process alarm threshold
   process-limit: 50
+  # If credentals are not provided nor working, defaults to mysqld.sock and root user with no password
   credentials:
     user: "root"
     password: "password"
@@ -10,6 +11,13 @@ mysql:
     network: "tcp"
     socket: "/var/run/mysqld/mysqld.sock"
     allow_native_passwords: true
+  auto-repair: # If enabled, monokit will run "mysql --auto-repair --all-databases" based on the weekly schedule.
+    enabled: true
+    day: "Sun" # Mon Tue Wed Thu Fri Sat Sun
+    hour: "05:00" # 24h format, e.g. 05:00, 17:00
+  alarm:
+    enabled: true
+  # Not implemented yet, can be added in the future versions
   cluster:
     enabled: false
     cluster_type: "" # ndb, xtradb
@@ -18,8 +26,6 @@ mysql:
     check_table_hour: "05:00"
     receive_queue_limit: 10
     flow_control_limit: 0.20
-  alarm:
-    enabled: true
 
 # Not Implemented Yet
 mariadb:
