@@ -74,5 +74,10 @@ func main() {
 		return
 	}
 
+	mysqlInDocker := IsMysqlInDocker(logger)
+	if mysqlInDocker {
+		logger.Info().Msg("MySQL appears to be running in Docker. This may affect connection methods and performance.")
+	}
+
 	CheckProcess(logger)
 }
