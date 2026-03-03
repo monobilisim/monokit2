@@ -25,9 +25,9 @@ func CheckProcess(logger zerolog.Logger) {
 	var processes []map[string]string
 	for rows.Next() {
 		var id int
-		var user, host, db, command, time, state, info sql.NullString
+		var user, host, db, command, time, state, info, timeMs sql.NullString
 
-		err := rows.Scan(&id, &user, &host, &db, &command, &time, &state, &info)
+		err := rows.Scan(&id, &user, &host, &db, &command, &time, &state, &info, &timeMs)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed to scan process row")
 			continue

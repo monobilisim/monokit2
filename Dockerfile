@@ -12,7 +12,8 @@ RUN apt-get update && \
         e2fsprogs \
         systemd \
         systemd-sysv \
-        dbus && \
+        dbus \
+        default-mysql-server && \
     rm -rf /var/lib/apt/lists/*
 
 STOPSIGNAL SIGRTMIN+3
@@ -32,6 +33,6 @@ RUN mkdir -p /etc/mono && \
 COPY scripts/docker-tests.service /etc/systemd/system/docker-tests.service
 COPY scripts/exit.target /etc/systemd/system/exit.target
 COPY scripts/exit-code.service /etc/systemd/system/exit-code.service
-RUN systemctl enable docker-tests.service exit-code.service
+RUN systemctl enable docker-tests.service exit-code.service mysql
 
 ENTRYPOINT ["/sbin/init"]

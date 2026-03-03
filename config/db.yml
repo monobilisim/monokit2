@@ -6,7 +6,7 @@ mysql:
     password: "password"
     host: "localhost"
     port: 3306
-    dbname: "db"
+    dbname: "mysql"
     network: "tcp"
     socket: "/var/run/mysqld/mysqld.sock"
     allow_native_passwords: true
