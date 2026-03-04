@@ -84,4 +84,6 @@ func main() {
 	if lib.DBConfig.Mysql.AutoRepair.Enabled {
 		AutoRepair(logger)
 	}
+
+	CheckPMM(logger)
 }
