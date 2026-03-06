@@ -127,4 +127,37 @@ type DBConfigType struct {
 			Enabled bool `yaml:"enabled"`
 		} `yaml:"alarm"`
 	} `yaml:"mysql"`
+
+	MariaDB struct {
+		ProcessLimit int `yaml:"process-limit"`
+		Credentials  struct {
+			User                 string `yaml:"user"`
+			Password             string `yaml:"password"`
+			Host                 string `yaml:"host"`
+			Port                 int    `yaml:"port"`
+			DBName               string `yaml:"dbname"`
+			Network              string `yaml:"network"`
+			Socket               string `yaml:"socket"`
+			AllowNativePasswords bool   `yaml:"allow_native_passwords"`
+		} `yaml:"credentials"`
+
+		GaleraCluster struct {
+			Enabled           bool    `yaml:"enabled"`
+			Size              int     `yaml:"size"`
+			Day               string  `yaml:"day"`
+			Hour              string  `yaml:"hour"`
+			ReceiveQueueLimit int     `yaml:"receive-queue-limit"`
+			FlowControlLimit  float64 `yaml:"flow-control-limit"`
+		} `yaml:"galera-cluster"`
+
+		AutoRepair struct {
+			Enabled bool   `yaml:"enabled"`
+			Day     string `yaml:"day"`  // Mon Tue Wed Thu Fri Sat Sun
+			Hour    string `yaml:"hour"` // 24h format, e.g. 05:00, 17:00
+		} `yaml:"auto-repair"`
+
+		Alarm struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"alarm"`
+	} `yaml:"mariadb"`
 }
