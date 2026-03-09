@@ -1,0 +1,2 @@
+Multi language support will be added in the future.
+This file is a placeholder for the time being.
