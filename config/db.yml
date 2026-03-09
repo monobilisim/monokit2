@@ -10,11 +10,13 @@ mysql:
     dbname: "mysql"
     network: "tcp"
     socket: "/var/run/mysqld/mysqld.sock"
-    allow_native_passwords: true
-  auto-repair: # If enabled, monokit will run "mysql --auto-repair --all-databases" based on the weekly schedule.
+    allow-native-passwords: true
+  auto-repair: # If enabled, monokit will run "mysqlcheck --auto-repair --all-databases" based on the weekly schedule.
     enabled: true
     day: "Sun" # Mon Tue Wed Thu Fri Sat Sun
     hour: "05:00" # 24h format, e.g. 05:00, 17:00
+  pmm-agent:
+    enabled: false
   alarm:
     enabled: true
   # Not implemented yet, can be added in the future versions
@@ -22,22 +24,33 @@ mysql:
     enabled: false
     cluster_type: "" # ndb, xtradb
     size: 3
-    check_table_day: "Sun"
-    check_table_hour: "05:00"
-    receive_queue_limit: 10
-    flow_control_limit: 0.20
+    receive-queue-limit: 10
+    flow-control-limit: 0.20
 
-# Not Implemented Yet
 mariadb:
   enabled: true
   process-limit: 50
-  galera-cluster:
+  credentials:
+    user: "root"
+    password: "password"
+    host: "localhost"
+    port: 3306
+    dbname: "mysql"
+    network: "tcp"
+    socket: "/var/run/mysqld/mysqld.sock"
+    allow-native-passwords: true
+  cluster:
     enabled: false
+    cluster-type: "galera" # galera
     size: 3
-    check_table_day: "Sun"
-    check_table_hour: "05:00"
-    receive_queue_limit: 10
-    flow_control_limit: 0.20
+    receive-queue-limit: 10
+    flow-control-limit: 0.20
+  auto-repair: # If enabled, monokit will run "mariadb-check --auto-repair --all-databases" based on the weekly schedule.
+    enabled: true
+    day: "Sun" # Mon Tue Wed Thu Fri Sat Sun
+    hour: "05:00" # 24h format, e.g. 05:00, 17:00
+  pmm-agent:
+    enabled: false
   alarm:
     enabled: true
 

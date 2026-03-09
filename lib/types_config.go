@@ -103,7 +103,7 @@ type DBConfigType struct {
 			DBName               string `yaml:"dbname"`
 			Network              string `yaml:"network"`
 			Socket               string `yaml:"socket"`
-			AllowNativePasswords bool   `yaml:"allow_native_passwords"`
+			AllowNativePasswords bool   `yaml:"allow-native-passwords"`
 		} `yaml:"credentials"`
 
 		AutoRepair struct {
@@ -115,12 +115,10 @@ type DBConfigType struct {
 		// Not implemented yet, but will be used for future cluster monitoring features
 		Cluster struct {
 			Enabled           bool    `yaml:"enabled"`
-			ClusterType       string  `yaml:"cluster_type"` // ndb, xtradb
+			ClusterType       string  `yaml:"cluster-type"` // ndb, xtradb
 			Size              int     `yaml:"size"`
-			CheckTableDay     string  `yaml:"check_table_day"`
-			CheckTableHour    string  `yaml:"check_table_hour"`
-			ReceiveQueueLimit int     `yaml:"receive_queue_limit"`
-			FlowControlLimit  float64 `yaml:"flow_control_limit"`
+			ReceiveQueueLimit int     `yaml:"receive-queue-limit"`
+			FlowControlLimit  float64 `yaml:"flow-control-limit"`
 		} `yaml:"cluster"`
 
 		Alarm struct {
@@ -138,23 +136,26 @@ type DBConfigType struct {
 			DBName               string `yaml:"dbname"`
 			Network              string `yaml:"network"`
 			Socket               string `yaml:"socket"`
-			AllowNativePasswords bool   `yaml:"allow_native_passwords"`
+			AllowNativePasswords bool   `yaml:"allow-native-passwords"`
 		} `yaml:"credentials"`
 
-		GaleraCluster struct {
+		Cluster struct {
 			Enabled           bool    `yaml:"enabled"`
+			ClusterType       string  `yaml:"cluster-type"` // galera
 			Size              int     `yaml:"size"`
-			Day               string  `yaml:"day"`
-			Hour              string  `yaml:"hour"`
 			ReceiveQueueLimit int     `yaml:"receive-queue-limit"`
 			FlowControlLimit  float64 `yaml:"flow-control-limit"`
-		} `yaml:"galera-cluster"`
+		} `yaml:"cluster"`
 
 		AutoRepair struct {
 			Enabled bool   `yaml:"enabled"`
 			Day     string `yaml:"day"`  // Mon Tue Wed Thu Fri Sat Sun
 			Hour    string `yaml:"hour"` // 24h format, e.g. 05:00, 17:00
 		} `yaml:"auto-repair"`
+
+		PMMAgent struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"pmm-agent"`
 
 		Alarm struct {
 			Enabled bool `yaml:"enabled"`
