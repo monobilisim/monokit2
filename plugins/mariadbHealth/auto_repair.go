@@ -8,6 +8,7 @@ import (
 	"time"
 
 	lib "github.com/monobilisim/monokit2/lib"
+	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -110,4 +111,30 @@ func AutoRepair(logger zerolog.Logger) {
 	lib.CreateOrUpdateCronInterval(cronName)
 
 	logger.Info().Msgf("MariaDB auto repair completed successfully: %s", string(out))
+}
+
+func GetAutoRepairDataForUI() ([]ui.KV, bool) {
+	hasError := false
+	toolStatus := "Installed"
+
+	if _, err := exec.LookPath("mariadb-check"); err != nil {
+		toolStatus = "NOT INSTALLED (Missing Client Tools)"
+		hasError = true
+	}
+
+	scheduledDay := lib.DBConfig.MariaDB.AutoRepair.Day
+	scheduledHour := lib.DBConfig.MariaDB.AutoRepair.Hour
+
+	if scheduledDay == "" {
+		scheduledDay = "Not Set"
+	}
+	if scheduledHour == "" {
+		scheduledHour = "Not Set"
+	}
+
+	return []ui.KV{
+		{Key: "Auto Repair Tool", Value: toolStatus},
+		{Key: "Scheduled Day", Value: scheduledDay},
+		{Key: "Scheduled Time", Value: scheduledHour},
+	}, hasError
 }

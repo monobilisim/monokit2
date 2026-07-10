@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	lib "github.com/monobilisim/monokit2/lib"
+	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -63,4 +64,32 @@ func CheckPMM(logger zerolog.Logger) {
 			lib.SendZulipAlarm(msg, pluginName, moduleName, up)
 		}
 	}
+}
+
+func GetPMMDataForUI() ([]ui.KV, bool) {
+	hasError := false
+	activeState := "unknown"
+
+	if _, err := exec.LookPath("pmm-agent"); err != nil {
+		return []ui.KV{
+			{Key: "PMM Agent", Value: "NOT INSTALLED"},
+		}, true
+	}
+
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		return []ui.KV{
+			{Key: "Systemctl", Value: "NOT FOUND (Cannot check service)"},
+		}, true
+	}
+	out, _ := exec.Command("systemctl", "is-active", pmmServiceName).Output()
+	activeState = strings.TrimSpace(string(out))
+
+	if activeState != "active" {
+		hasError = true
+	}
+
+	return []ui.KV{
+		{Key: "Service Name", Value: pmmServiceName},
+		{Key: "Active State", Value: strings.ToUpper(activeState)},
+	}, hasError
 }
