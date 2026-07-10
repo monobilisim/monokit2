@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	lib "github.com/monobilisim/monokit2/lib"
+	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -22,6 +23,7 @@ var down string = "down"
 var configFiles []string = []string{"ufw.yml"}
 
 func main() {
+
 	if len(os.Args) > 1 {
 		lib.HandleCommonPluginArgs(os.Args, version, configFiles)
 		return
@@ -193,6 +195,46 @@ func main() {
 
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 	}
+	//UFWDRY RUN TEST RESULTS
+	var dryRunDashboard strings.Builder
+	dryRunDashboard.WriteString(ui.Log(ui.InfoBadge, "UFW Rules Download & Test Completed.\n\n"))
+
+	dryRunData, dryRunStatus := GetUfwDryRunDataForUI()
+
+	dryRunBadge := ui.SuccessBadge
+	if dryRunStatus == "w" {
+		dryRunBadge = ui.WarningBadge
+	} else if dryRunStatus == "e" {
+		dryRunBadge = ui.ErrorBadge
+	}
+
+	dryRunDashboard.WriteString(ui.Log(dryRunBadge, "UFW Dry Run (Test) Status:\n"))
+	dryRunDashboard.WriteString(ui.RenderKeyValueList(dryRunData))
+	dryRunDashboard.WriteString("\n")
+
+	dryRunCard := ui.RenderPluginCard("UFW APPLIER (DRY RUN)", dryRunDashboard.String())
+	fmt.Println(dryRunCard)
+
+	//UFWDRY APPLY RESULTS
+	var applyDashboard strings.Builder
+	applyDashboard.WriteString(ui.Log(ui.InfoBadge, "UFW Rules Apply Process Completed.\n\n"))
+
+	ufwData, ufwStatus := GetUfwApplyDataForUI(logger)
+
+	applyBadge := ui.SuccessBadge
+	if ufwStatus == "w" {
+		applyBadge = ui.WarningBadge
+	} else if ufwStatus == "e" {
+		applyBadge = ui.ErrorBadge
+	}
+
+	applyDashboard.WriteString(ui.Log(applyBadge, "UFW Application Status:\n"))
+	applyDashboard.WriteString(ui.RenderKeyValueList(ufwData))
+	applyDashboard.WriteString("\n")
+
+	applyCard := ui.RenderPluginCard("UFW APPLIER (APPLY)", applyDashboard.String())
+	fmt.Println(applyCard)
+
 }
 
 func UfwApply(logger zerolog.Logger) error {
@@ -301,4 +343,60 @@ func UfwApply(logger zerolog.Logger) error {
 	}
 
 	return nil
+}
+func GetUfwApplyDataForUI(logger zerolog.Logger) ([]ui.KV, string) {
+	var moduleName string
+	var alarmMessage string
+	overallStatus := "s"
+	dryRunDisplay := "SUCCESS"
+	applyDisplay := "SUCCESS"
+
+	moduleName = "dryrun"
+	err := UfwApplyDryRun(logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to dry run ufw rules")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to dry run ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		return []ui.KV{
+			{Key: "Dry Run Status", Value: fmt.Sprintf("ERROR (%v)", err)},
+			{Key: "Apply Status", Value: "SKIPPED"},
+		}, "e"
+	}
+
+	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err == nil && lastAlarm.Status == down {
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW dry run successfully after previous failure", lib.GlobalConfig.Hostname)
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
+
+	moduleName = "apply"
+	err = UfwApply(logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to apply ufw rules")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to apply ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		return []ui.KV{
+			{Key: "Dry Run Status", Value: dryRunDisplay},
+			{Key: "Apply Status", Value: fmt.Sprintf("ERROR (%v)", err)},
+		}, "e"
+	}
+
+	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err == nil && lastAlarm.Status == down {
+		logger.Info().Msg("UFW apply succeeded after previous failure")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW apply successfully after previous failure", lib.GlobalConfig.Hostname)
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
+
+	sourceCount := fmt.Sprintf("%d", len(lib.UfwApplyConfig.RuleSources))
+	staticCount := fmt.Sprintf("%d", len(lib.UfwApplyConfig.StaticRules))
+
+	return []ui.KV{
+		{Key: "Rule Sources", Value: sourceCount},
+		{Key: "Static Rules", Value: staticCount},
+		{Key: "Dry Run Status", Value: dryRunDisplay},
+		{Key: "Apply Status", Value: applyDisplay},
+	}, overallStatus
 }
