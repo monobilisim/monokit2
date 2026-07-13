@@ -78,7 +78,7 @@ func main() {
 	)
 
 	if lib.OsHealthConfig.VersionAlarm.Enabled {
-		appRows, status := GetAppVersionsForUI()
+		appRows, status, hasData := GetAppVersionsForUI()
 		appHeaders := []string{"APPLICATION", "VERSION", "STATE"}
 
 		badge := lib.SuccessBadge
@@ -86,10 +86,14 @@ func main() {
 		if status == false {
 			badge = lib.ErrorBadge
 		}
-		dashboard.WriteString(lib.Log(badge, "Applications on the System:\n"))
-		dashboard.WriteString(lib.RenderTable(appHeaders, appRows))
-		dashboard.WriteString("\n")
 
+		if hasData && status {
+			dashboard.WriteString(lib.Log(badge, "Applications on the System:\n"))
+			dashboard.WriteString(lib.RenderTable(appHeaders, appRows))
+			dashboard.WriteString("\n")
+		} else if status {
+			dashboard.WriteString(lib.Log(lib.InfoBadge, "No applications found to display.\n"))
+		}
 	}
 
 	if lib.OsHealthConfig.RamUsageAlarm.Enabled {
@@ -124,43 +128,49 @@ func main() {
 	}
 
 	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
-		diskRows, status := GetSystemDiskForUI()
+		diskRows, status, hasData := GetSystemDiskForUI()
 		badge := lib.SuccessBadge
 		if status == "w" {
 			badge = lib.WarningBadge
 		} else if status == "e" {
 			badge = lib.ErrorBadge
 		}
-		dashboard.WriteString(
-			lib.Log(badge, "System Disk Usage:\n"),
-		)
-		dashboard.WriteString(
-			lib.RenderTable(
-				[]string{"MOUNT POINT", "USED / TOTAL", "USAGE %", "STATUS"},
-				diskRows,
-			),
-		)
-		dashboard.WriteString("\n\n")
+		if hasData {
+			dashboard.WriteString(
+				lib.Log(badge, "System Disk Usage:\n"),
+			)
+			dashboard.WriteString(
+				lib.RenderTable(
+					[]string{"MOUNT POINT", "USED / TOTAL", "USAGE %", "STATUS"},
+					diskRows,
+				),
+			)
+			dashboard.WriteString("\n\n")
+		} else {
+
+		}
 	}
 
 	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
-		zfsRows, status := GetSystemZFSForUI()
+		zfsRows, status, hasData := GetSystemZFSForUI()
 		badge := lib.SuccessBadge
 		if status == "w" {
 			badge = lib.WarningBadge
 		} else if status == "e" {
 			badge = lib.ErrorBadge
 		}
-		dashboard.WriteString(
-			lib.Log(badge, "ZFS Pool Status:\n"),
-		)
-		dashboard.WriteString(
-			lib.RenderTable(
-				[]string{"POOL", "HEALTH", "CAPACITY", "STATUS"},
-				zfsRows,
-			),
-		)
-		dashboard.WriteString("\n\n")
+		if hasData {
+			dashboard.WriteString(
+				lib.Log(badge, "ZFS Pool Status:\n"),
+			)
+			dashboard.WriteString(
+				lib.RenderTable(
+					[]string{"POOL", "HEALTH", "CAPACITY", "STATUS"},
+					zfsRows,
+				),
+			)
+			dashboard.WriteString("\n\n")
+		}
 	}
 
 	if lib.OsHealthConfig.PowerAlarm.Enabled {
@@ -179,31 +189,33 @@ func main() {
 	}
 	if lib.OsHealthConfig.ServiceHealthAlarm.Enabled {
 		if lib.OsHealthConfig.ServiceHealthAlarm.Enabled && hasSystemd() {
-			systemdRows, status := GetSystemdForUI()
+			systemdRows, status, hasData := GetSystemdForUI()
 			badge := lib.SuccessBadge
 			if status == "w" {
 				badge = lib.WarningBadge
 			} else if status == "e" {
 				badge = lib.ErrorBadge
 			}
-			dashboard.WriteString(
-				lib.Log(badge, "Monitored Services:\n"),
-			)
-			dashboard.WriteString(
-				lib.RenderTable(
-					[]string{"SERVICE NAME", "STATUS", "UPTIME", "HEALTH"},
-					systemdRows,
-				),
-			)
-			dashboard.WriteString("\n\n")
+			if hasData {
+				dashboard.WriteString(
+					lib.Log(badge, "Monitored Services:\n"),
+				)
+				dashboard.WriteString(
+					lib.RenderTable(
+						[]string{"SERVICE NAME", "STATUS", "UPTIME", "HEALTH"},
+						systemdRows,
+					),
+				)
+				dashboard.WriteString("\n\n")
+			}
 		}
+		fmt.Println(
+			lib.RenderPluginCard(
+				"OS HEALTH MONITOR",
+				dashboard.String(),
+			),
+		)
 	}
-	fmt.Println(
-		lib.RenderPluginCard(
-			"OS HEALTH MONITOR",
-			dashboard.String(),
-		),
-	)
 }
 
 // checks if there is an active ZFS pool

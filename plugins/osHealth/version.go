@@ -71,14 +71,15 @@ func CheckApplicationVersion(logger zerolog.Logger) {
 	vlib.ZimbraCheck(logger)
 }
 
-func GetAppVersionsForUI() ([][]string, bool) {
+func GetAppVersionsForUI() ([][]string, bool, bool) {
 	var versions []lib.Version
 	var rows [][]string
 	hasError := false
+	hasData := false
 
 	err := lib.DB.Model(&lib.Version{}).Find(&versions).Error
 	if err != nil {
-		return [][]string{{"Database Error.", "Unreadable", "ERROR"}}, true
+		return [][]string{{"Database Error.", "Unreadable", "ERROR"}}, true, false
 	}
 
 	for _, v := range versions {
@@ -98,10 +99,11 @@ func GetAppVersionsForUI() ([][]string, bool) {
 	}
 
 	if len(rows) == 0 {
-		return [][]string{{"System", "No Installed Applications.", "-"}}, hasError
+		hasData = false
+		return nil, hasError, hasData
 	}
 
-	return rows, hasError
+	return rows, hasError, hasData
 }
 
 func GetSystemRAMForUI() ([][]string, string) {
@@ -120,17 +122,14 @@ func GetSystemRAMForUI() ([][]string, string) {
 	availableRAM := float64(vm.Available) / GB
 	usedRAM := totalRAM - availableRAM
 
-	// The original formula from your code reflecting the true usage rate:
 	usagePercentage := float64(vm.Total-vm.Available) / float64(vm.Total) * 100
 
-	// 3. Status check (Has the alarm limit been exceeded?)
 	status := "Normal"
 	if usagePercentage >= float64(lib.OsHealthConfig.RamUsageAlarm.Limit) {
 		status = "⚠ CRITICAL (Limit Exceeded)"
 		overallStatus = "w"
 	}
 
-	// 4. Fill our table rows with actual data (formatting with 2 decimal places)
 	rows = append(rows, []string{"Total Memory", fmt.Sprintf("%.2f GB", totalRAM)})
 	rows = append(rows, []string{"Used", fmt.Sprintf("%.2f GB", usedRAM)})
 	rows = append(rows, []string{"Available", fmt.Sprintf("%.2f GB", availableRAM)})
@@ -173,13 +172,14 @@ func GetSystemLoadForUI() ([][]string, string) {
 	return rows, overallStatus
 }
 
-func GetSystemDiskForUI() ([][]string, string) {
+func GetSystemDiskForUI() ([][]string, string, bool) {
 	var rows [][]string
 	overallStatus := "s"
+	hasData := true
 
 	diskPartitions, err := disk.Partitions(true)
 	if err != nil {
-		return [][]string{{"System Error", "Failed to read disk partitions", "-", "-"}}, "e"
+		return [][]string{{"System Error", "Failed to read disk partitions", "-", "-"}}, "e", false
 	}
 
 	supportedFilesystems := []string{"ext4", "ext3", "ext2", "xfs", "btrfs", "fat32", "vfat"}
@@ -213,29 +213,30 @@ func GetSystemDiskForUI() ([][]string, string) {
 		rows = append(rows, []string{partition.Mountpoint, usageFormatted, percentage, status})
 	}
 
-	// Eğer listelenecek hiçbir geçerli disk bulunamazsa
 	if len(rows) == 0 {
-		return [][]string{{"System", "No disks found in supported formats", "-", "-"}}, overallStatus
+		hasData = false
+		return nil, overallStatus, hasData
 	}
 
-	return rows, overallStatus
+	return rows, overallStatus, hasData
 }
 
-func GetSystemZFSForUI() ([][]string, string) {
+func GetSystemZFSForUI() ([][]string, string, bool) {
 
 	var rows [][]string
 	overallStatus := "s"
+	hasData := true
 
 	// 1. Search for the command first to prevent crashes on Windows or non-ZFS systems
 	_, err := exec.LookPath("zpool")
 	if err != nil {
-		return [][]string{{"System", "ZFS (zpool) command not found", "-", "-"}}, "w"
+		return [][]string{{"System", "ZFS (zpool) command not found", "-", "-"}}, "w", false
 	}
 
 	// 2. Execute the ZFS command
 	out, err := exec.Command("zpool", "list", "-H", "-o", "name,health,capacity").Output()
 	if err != nil {
-		return [][]string{{"System Error", "Failed to read ZFS data", "-", "-"}}, "w"
+		return [][]string{{"System Error", "Failed to read ZFS data", "-", "-"}}, "w", false
 	}
 
 	// 3. Read the output line by line and put it into the table
@@ -272,10 +273,11 @@ func GetSystemZFSForUI() ([][]string, string) {
 	}
 
 	if len(rows) == 0 {
-		return [][]string{{"System", "No registered ZFS Pool found", "-", "-"}}, overallStatus
+		hasData = false
+		return nil, overallStatus, hasData
 	}
 
-	return rows, overallStatus
+	return rows, overallStatus, hasData
 }
 
 func GetSystemPowerForUI() [][]string {
@@ -352,19 +354,20 @@ func GetSystemPowerForUI() [][]string {
 	return rows
 }
 
-func GetSystemdForUI() ([][]string, string) {
+func GetSystemdForUI() ([][]string, string, bool) {
 	var rows [][]string
 	overallStatus := "s"
+	hasData := true
 
 	// 1. OS check to prevent crashes due to dbus errors on Windows
 	if runtime.GOOS != "linux" {
-		return [][]string{{"System", "Systemd only works in a Linux environment", "-", "-"}}, "w"
+		return [][]string{{"System", "Systemd only works in a Linux environment", "-", "-"}}, "w", false
 	}
 
 	// 2. Call the function from the original code to get the services
 	services, err := GetServiceStatus()
 	if err != nil {
-		return [][]string{{"System Error", "Failed to read service statuses", "-", "-"}}, "w"
+		return [][]string{{"System Error", "Failed to read service statuses", "-", "-"}}, "w", false
 	}
 
 	// 3. Apply the exact same filtering from the original code to find monitored services
@@ -412,8 +415,8 @@ func GetSystemdForUI() ([][]string, string) {
 	}
 
 	if monitoredCount == 0 {
-		return [][]string{{"System", "No active services found in the monitoring list", "-", "-"}}, overallStatus
+		hasData = false
+		return nil, overallStatus, hasData
 	}
-
-	return rows, overallStatus
+	return rows, overallStatus, hasData
 }
