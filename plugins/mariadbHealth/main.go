@@ -10,7 +10,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	lib "github.com/monobilisim/monokit2/lib"
-	"github.com/monobilisim/monokit2/ui"
 )
 
 // comes from -ldflags "-X 'main.version=version'" flag in ci build
@@ -118,33 +117,33 @@ func main() {
 
 	var dashboard strings.Builder
 	dashboard.WriteString(
-		ui.Log(ui.InfoBadge, "MARIADB health checks completed.\n\n"),
+		lib.Log(lib.InfoBadge, "MARIADB health checks completed.\n\n"),
 	)
 
 	if lib.DBConfig.MariaDB.AutoRepair.Enabled {
 
 		repairData, hasError := GetAutoRepairDataForUI()
 
-		badge := ui.InfoBadge
+		badge := lib.InfoBadge
 		if hasError {
-			badge = ui.ErrorBadge
+			badge = lib.ErrorBadge
 		}
 
-		dashboard.WriteString(ui.Log(badge, "MariaDB Auto Repair Configuration:\n"))
-		dashboard.WriteString(ui.RenderKeyValueList(repairData))
+		dashboard.WriteString(lib.Log(badge, "MariaDB Auto Repair Configuration:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(repairData))
 		dashboard.WriteString("\n")
 	}
 	if lib.DBConfig.MariaDB.PMMAgent.Enabled {
 
 		pmmData, pmmHasError := GetPMMDataForUI()
 
-		badge := ui.SuccessBadge
+		badge := lib.SuccessBadge
 		if pmmHasError {
-			badge = ui.ErrorBadge
+			badge = lib.ErrorBadge
 		}
 
-		dashboard.WriteString(ui.Log(badge, "PMM Agent Monitoring Status:\n"))
-		dashboard.WriteString(ui.RenderKeyValueList(pmmData))
+		dashboard.WriteString(lib.Log(badge, "PMM Agent Monitoring Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(pmmData))
 		dashboard.WriteString("\n")
 	}
 
@@ -152,52 +151,52 @@ func main() {
 
 		certData, certStatus := GetClusterCertDataForUI()
 
-		badge := ui.SuccessBadge
+		badge := lib.SuccessBadge
 
 		if certStatus == "w" {
-			badge = ui.WarningBadge
+			badge = lib.WarningBadge
 		} else if certStatus == "e" {
-			badge = ui.ErrorBadge
+			badge = lib.ErrorBadge
 		}
 
-		dashboard.WriteString(ui.Log(badge, "Galera Cluster Certification Status:\n"))
-		dashboard.WriteString(ui.RenderKeyValueList(certData))
+		dashboard.WriteString(lib.Log(badge, "Galera Cluster Certification Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(certData))
 		dashboard.WriteString("\n")
 	}
 	if lib.DBConfig.MariaDB.Cluster.Enabled && lib.DBConfig.MariaDB.Cluster.ClusterType == "galera" {
 
 		inaccessibleData, inaccessibleStatus := GetInaccessibleClusterDataForUI()
 
-		inaccBadge := ui.SuccessBadge
+		inaccBadge := lib.SuccessBadge
 
 		if inaccessibleStatus == "w" {
-			inaccBadge = ui.WarningBadge
+			inaccBadge = lib.WarningBadge
 		} else if inaccessibleStatus == "e" {
-			inaccBadge = ui.ErrorBadge
+			inaccBadge = lib.ErrorBadge
 		}
 
-		dashboard.WriteString(ui.Log(inaccBadge, "Galera Cluster Accessibility:\n"))
-		dashboard.WriteString(ui.RenderKeyValueList(inaccessibleData))
+		dashboard.WriteString(lib.Log(inaccBadge, "Galera Cluster Accessibility:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(inaccessibleData))
 		dashboard.WriteString("\n")
 	}
 	if lib.DBConfig.MariaDB.Cluster.Enabled && lib.DBConfig.MariaDB.Cluster.ClusterType == "galera" {
 
 		certData, certStatus := GetClusterSyncedDataForUI()
 
-		badge := ui.SuccessBadge
+		badge := lib.SuccessBadge
 
 		if certStatus == "w" {
-			badge = ui.WarningBadge
+			badge = lib.WarningBadge
 		} else if certStatus == "e" {
-			badge = ui.ErrorBadge
+			badge = lib.ErrorBadge
 		}
 
-		dashboard.WriteString(ui.Log(badge, "Galera Cluster Certification Status:\n"))
-		dashboard.WriteString(ui.RenderKeyValueList(certData))
+		dashboard.WriteString(lib.Log(badge, "Galera Cluster Certification Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(certData))
 		dashboard.WriteString("\n")
 	}
 	fmt.Println(
-		ui.RenderPluginCard(
+		lib.RenderPluginCard(
 			"MARIADB HEALTH MONITOR",
 			dashboard.String(),
 		),

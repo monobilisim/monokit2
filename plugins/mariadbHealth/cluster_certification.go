@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/monobilisim/monokit2/lib"
-	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -44,7 +43,7 @@ func CheckClusterCertification(logger zerolog.Logger) {
 	}
 }
 
-func GetClusterCertDataForUI() ([]ui.KV, string) {
+func GetClusterCertDataForUI() ([]lib.KV, string) {
 	var count int
 	var limiter int = 10
 	overallStatus := "s"
@@ -53,7 +52,7 @@ func GetClusterCertDataForUI() ([]ui.KV, string) {
 	rows, err := Connection.Query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE LIKE '% for certificate%'")
 	if err != nil {
 
-		return []ui.KV{
+		return []lib.KV{
 			{Key: "CERTIFICATION METRIC", Value: "ERROR (Database query failed)"},
 		}, "e"
 	}
@@ -68,18 +67,18 @@ func GetClusterCertDataForUI() ([]ui.KV, string) {
 		overallStatus = "w"
 	}
 
-	return []ui.KV{
+	return []lib.KV{
 		{Key: "Waiting Certificates", Value: fmt.Sprintf("%d (Limit: %d)", count, limiter)},
 		{Key: "Status", Value: state},
 	}, overallStatus
 }
 
-func GetInaccessibleClusterDataForUI() ([]ui.KV, string) {
+func GetInaccessibleClusterDataForUI() ([]lib.KV, string) {
 	overallStatus := "s"
 
 	rows, err := Connection.Query("SELECT @@wsrep_on")
 	if err != nil {
-		return []ui.KV{{Key: "Galera Status", Value: "ERROR (wsrep_on query failed)"}}, "e"
+		return []lib.KV{{Key: "Galera Status", Value: "ERROR (wsrep_on query failed)"}}, "e"
 	}
 	defer rows.Close()
 
@@ -89,14 +88,14 @@ func GetInaccessibleClusterDataForUI() ([]ui.KV, string) {
 	}
 
 	if wsrepOn != "ON" && wsrepOn != "1" {
-		return []ui.KV{
+		return []lib.KV{
 			{Key: "Galera Status", Value: "DISABLED (Not a Galera Node)"},
 		}, "w"
 	}
 
 	rows, err = Connection.Query("SHOW GLOBAL STATUS WHERE Variable_name = 'wsrep_cluster_status'")
 	if err != nil {
-		return []ui.KV{{Key: "Cluster Status", Value: "ERROR (Status query failed)"}}, "e"
+		return []lib.KV{{Key: "Cluster Status", Value: "ERROR (Status query failed)"}}, "e"
 	}
 	defer rows.Close()
 
@@ -107,7 +106,7 @@ func GetInaccessibleClusterDataForUI() ([]ui.KV, string) {
 
 	rows, err = Connection.Query("SHOW STATUS WHERE Variable_name = 'wsrep_cluster_size'")
 	if err != nil {
-		return []ui.KV{
+		return []lib.KV{
 			{Key: "Cluster Status", Value: wsrepClusterStatus},
 			{Key: "Cluster Size", Value: "ERROR (Size query failed)"},
 		}, "e"
@@ -125,7 +124,7 @@ func GetInaccessibleClusterDataForUI() ([]ui.KV, string) {
 		statusDisplay = fmt.Sprintf("⚠ %s (Isolated Node)", wsrepClusterStatus)
 	}
 
-	return []ui.KV{
+	return []lib.KV{
 		{Key: "Galera Status", Value: "ON"},
 		{Key: "Cluster Status", Value: statusDisplay},
 		{Key: "Cluster Size", Value: clusterSize},

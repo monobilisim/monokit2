@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	lib "github.com/monobilisim/monokit2/lib"
-	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -120,7 +119,7 @@ func UfwApplyDryRun(logger zerolog.Logger) error {
 
 	return nil
 }
-func GetUfwDryRunDataForUI() ([]ui.KV, string) {
+func GetUfwDryRunDataForUI() ([]lib.KV, string) {
 	staticCount := len(lib.UfwApplyConfig.StaticRules)
 
 	fileCount := 0
@@ -129,7 +128,7 @@ func GetUfwDryRunDataForUI() ([]ui.KV, string) {
 		fileCount = len(tmpFiles)
 	}
 
-	return []ui.KV{
+	return []lib.KV{
 		{Key: "Static Rules Tested", Value: fmt.Sprintf("%d", staticCount)},
 		{Key: "Ruleset Files Tested", Value: fmt.Sprintf("%d", fileCount)},
 		{Key: "Dry Run Result", Value: "SUCCESS"},

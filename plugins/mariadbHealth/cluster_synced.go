@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	lib "github.com/monobilisim/monokit2/lib"
-	"github.com/monobilisim/monokit2/ui"
 	"github.com/rs/zerolog"
 )
 
@@ -46,12 +45,12 @@ func CheckClusterSynced(logger zerolog.Logger) {
 	}
 
 }
-func GetClusterSyncedDataForUI() ([]ui.KV, string) {
+func GetClusterSyncedDataForUI() ([]lib.KV, string) {
 	overallStatus := "s"
 
 	rows, err := Connection.Query("SHOW GLOBAL STATUS WHERE Variable_name = 'wsrep_local_state_comment'")
 	if err != nil {
-		return []ui.KV{{Key: "Sync Status", Value: "ERROR (Query failed)"}}, "e"
+		return []lib.KV{{Key: "Sync Status", Value: "ERROR (Query failed)"}}, "e"
 	}
 	defer rows.Close()
 
@@ -66,7 +65,7 @@ func GetClusterSyncedDataForUI() ([]ui.KV, string) {
 		displayState = fmt.Sprintf("⚠ %s (Out of Sync)", wsrepLocalStateComment)
 	}
 
-	return []ui.KV{
+	return []lib.KV{
 		{Key: "Local State", Value: displayState},
 	}, overallStatus
 }
