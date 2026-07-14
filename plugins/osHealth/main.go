@@ -83,10 +83,9 @@ func main() {
 
 		badge := lib.SuccessBadge
 
-		if status == false {
+		if status == true {
 			badge = lib.ErrorBadge
 		}
-
 		if hasData && status {
 			dashboard.WriteString(lib.Log(badge, "Applications on the System:\n"))
 			dashboard.WriteString(lib.RenderTable(appHeaders, appRows))

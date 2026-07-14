@@ -75,7 +75,7 @@ func GetAppVersionsForUI() ([][]string, bool, bool) {
 	var versions []lib.Version
 	var rows [][]string
 	hasError := false
-	hasData := false
+	hasData := true
 
 	err := lib.DB.Model(&lib.Version{}).Find(&versions).Error
 	if err != nil {
