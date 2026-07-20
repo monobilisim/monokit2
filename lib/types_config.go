@@ -161,4 +161,17 @@ type DBConfigType struct {
 			Enabled bool `yaml:"enabled"`
 		} `yaml:"alarm"`
 	} `yaml:"mariadb"`
+	Redis struct {
+		Credentials struct {
+			Host     string `yaml:"host"`
+			Port     string `yaml:"port"`
+			Password string `yaml:"password"`
+		} `yaml:"credentials"`
+
+		SlaveCount int `yaml:"slave-count"`
+
+		Alarm struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"alarm"`
+	} `yaml:"redis"`
 }
