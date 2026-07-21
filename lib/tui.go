@@ -78,9 +78,7 @@ var (
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FAFAFA")).
 			Background(lipgloss.Color("#7D56F4")).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			PaddingLeft(2).
+			Padding(0, 1).
 			Bold(true)
 
 	selectedStyle = lipgloss.NewStyle().
@@ -111,10 +109,6 @@ var (
 				Foreground(lipgloss.Color("#00FF00")).
 				Bold(true)
 )
-
-func (m TUIModel) panelWidth() int {
-	return (m.width / 2) - 3
-}
 
 func NewTUIModel(version string) TUIModel {
 	model := TUIModel{
@@ -234,6 +228,22 @@ func isPluginForCurrentPlatform(pluginName, currentOS, currentArch string) bool 
 	return true
 }
 
+// calculateFileHash calculates SHA256 hash of a file
+func calculateFileHash(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return ""
+	}
+
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
 func (m *TUIModel) getPluginVersion(pluginName string) string {
 	pluginPath := filepath.Join(PluginsDir, pluginName)
 	cmd := exec.Command(pluginPath, "version")
@@ -302,6 +312,49 @@ func fetchLatestReleaseTag(useDevel bool) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not determine latest release tag")
+}
+
+// fetchChecksums fetches and parses the checksums.txt file from a GitHub release
+func fetchChecksums(tag string) (map[string]string, error) {
+	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/checksums.txt", githubOwner, githubRepo, tag)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch checksums: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Checksums file might not exist, return empty map
+		return make(map[string]string), nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read checksums: %v", err)
+	}
+
+	checksums := make(map[string]string)
+	lines := strings.Split(string(body), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Format: "hash  filename" or "hash filename"
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			hash := parts[0]
+			fileName := parts[len(parts)-1]
+			checksums[fileName] = hash
+		}
+	}
+
+	return checksums, nil
 }
 
 // fetchAvailablePlugins scrapes GitHub releases page to get available plugin assets
@@ -509,64 +562,7 @@ func (m TUIModel) handleMainMenuInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-func calculateFileHash(filePath string) string {
-	// calculateFileHash calculates SHA256 hash of a file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return ""
-	}
-	defer file.Close()
 
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return ""
-	}
-
-	return hex.EncodeToString(hash.Sum(nil))
-}
-
-// fetchChecksums fetches and parses the checksums.txt file from a GitHub release
-func fetchChecksums(tag string) (map[string]string, error) {
-	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/checksums.txt", githubOwner, githubRepo, tag)
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch checksums: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Checksums file might not exist, return empty map
-		return make(map[string]string), nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read checksums: %v", err)
-	}
-
-	checksums := make(map[string]string)
-	lines := strings.Split(string(body), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		// Format: "hash  filename" or "hash filename"
-		parts := strings.Fields(line)
-		if len(parts) >= 2 {
-			hash := parts[0]
-			fileName := parts[len(parts)-1]
-			checksums[fileName] = hash
-		}
-	}
-
-	return checksums, nil
-}
 func (m TUIModel) handlePluginSelectionInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q", "esc":
