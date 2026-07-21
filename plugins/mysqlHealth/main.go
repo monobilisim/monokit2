@@ -86,4 +86,24 @@ func main() {
 	}
 
 	CheckPMM(logger)
+
+	var dashboard strings.Builder
+	dashboard.WriteString(
+		lib.Log(lib.InfoBadge, "Mysql health checks completed.\n\n"),
+	)
+
+	if lib.DBConfig.MariaDB.AutoRepair.Enabled {
+		repairData, repairStatus := GetAutoRepairDataForUI()
+
+		badge := lib.SuccessBadge
+		if repairStatus == "w" {
+			badge = lib.WarningBadge
+		} else if repairStatus == "e" {
+			badge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(badge, "MariaDB Auto Repair Configuration:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(repairData))
+		dashboard.WriteString("\n")
+	}
 }

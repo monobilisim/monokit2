@@ -22,6 +22,7 @@ var down string = "down"
 var configFiles []string = []string{"ufw.yml"}
 
 func main() {
+
 	if len(os.Args) > 1 {
 		lib.HandleCommonPluginArgs(os.Args, version, configFiles)
 		return
@@ -68,19 +69,15 @@ func main() {
 			logger.Warn().Msg("Empty ruleset URL, skipping...")
 			continue
 		}
-
 		if ruleset.Protocol != "tcp" && ruleset.Protocol != "udp" && ruleset.Protocol != "all" {
 			logger.Warn().Msgf("Invalid protocol %s for ruleset %s, skipping...", ruleset.Protocol, ruleset.Url)
 			continue
 		}
-
 		if ruleset.Port == "" {
 			logger.Warn().Msgf("Empty port for ruleset %s, skipping...", ruleset.Url)
 			continue
 		}
-
 		ruleset.Url = strings.TrimSuffix(ruleset.Url, "/")
-
 		response, err := http.Get(ruleset.Url)
 		if err != nil {
 			logger.Error().Err(err).Msgf("Failed to fetch ruleset from %s", ruleset.Url)
@@ -108,7 +105,6 @@ func main() {
 			logger.Error().Err(err).Msgf("Failed to read response body from %s", ruleset.Url)
 			continue
 		}
-
 		lines := strings.Split(string(responseText), "\n")
 		var newLines []string
 
@@ -117,28 +113,21 @@ func main() {
 			if strings.Contains(line, "#") {
 				line = strings.Split(line, "#")[0]
 			}
-
 			line = strings.TrimSpace(line)
-
 			line = fmt.Sprintf("%s %s", line, ruleset.Protocol)
-
 			line = fmt.Sprintf("%s %s", line, ruleset.Port)
-
 			if ruleset.Comment != "" {
 				line = fmt.Sprintf("%s # %s", line, ruleset.Comment)
 			}
-
 			if line != "" {
 				newLines = append(newLines, line)
 			}
 		}
-
 		_, err = outputFile.WriteString(strings.Join(newLines, "\n"))
 		if err != nil {
 			logger.Error().Err(err).Msgf("Failed to write ruleset to file from %s", ruleset.Url)
 			continue
 		}
-
 		logger.Info().Msgf("Successfully fetched ruleset from %s", ruleset.Url)
 	}
 
@@ -148,35 +137,25 @@ func main() {
 	err = UfwApplyDryRun(logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to dry run ufw rules")
-
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to dry run ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
-
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
-
 		return
 	}
-
 	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to get last dry run alarm from database")
 		return
 	}
-
 	if lastAlarm.Status == down {
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW dry run successfully after previous failure", lib.GlobalConfig.Hostname)
-
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 	}
-
 	moduleName = "apply"
 	err = UfwApply(logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to apply ufw rules")
-
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to apply ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
-
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
-
 		return
 	}
 
@@ -185,14 +164,50 @@ func main() {
 		logger.Error().Err(err).Msg("Failed to get last apply alarm from database")
 		return
 	}
-
 	if lastAlarm.Status == down {
 		logger.Info().Msg("UFW apply succeeded after previous failure")
-
 		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW apply successfully after previous failure", lib.GlobalConfig.Hostname)
-
 		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 	}
+	//UFWDRY RUN TEST RESULTS
+	var dryRunDashboard strings.Builder
+	dryRunDashboard.WriteString(lib.Log(lib.InfoBadge, "UFW Rules Download & Test Completed.\n\n"))
+
+	dryRunData, dryRunStatus := GetUfwDryRunDataForUI()
+
+	dryRunBadge := lib.SuccessBadge
+	if dryRunStatus == "w" {
+		dryRunBadge = lib.WarningBadge
+	} else if dryRunStatus == "e" {
+		dryRunBadge = lib.ErrorBadge
+	}
+
+	dryRunDashboard.WriteString(lib.Log(dryRunBadge, "UFW Dry Run (Test) Status:\n"))
+	dryRunDashboard.WriteString(lib.RenderKeyValueList(dryRunData))
+	dryRunDashboard.WriteString("\n")
+
+	dryRunCard := lib.RenderPluginCard("UFW APPLIER (DRY RUN)", dryRunDashboard.String())
+	fmt.Println(dryRunCard)
+
+	//UFWDRY APPLY RESULTS
+	var applyDashboard strings.Builder
+	applyDashboard.WriteString(lib.Log(lib.InfoBadge, "UFW Rules Apply Process Completed.\n\n"))
+
+	ufwData, ufwStatus := GetUfwApplyDataForUI(logger)
+
+	applyBadge := lib.SuccessBadge
+	if ufwStatus == "w" {
+		applyBadge = lib.WarningBadge
+	} else if ufwStatus == "e" {
+		applyBadge = lib.ErrorBadge
+	}
+
+	applyDashboard.WriteString(lib.Log(applyBadge, "UFW Application Status:\n"))
+	applyDashboard.WriteString(lib.RenderKeyValueList(ufwData))
+	applyDashboard.WriteString("\n")
+
+	applyCard := lib.RenderPluginCard("UFW APPLIER (APPLY)", applyDashboard.String())
+	fmt.Println(applyCard)
 }
 
 func UfwApply(logger zerolog.Logger) error {
@@ -215,17 +230,14 @@ func UfwApply(logger zerolog.Logger) error {
 				command.Args = append(command.Args, "port")
 				command.Args = append(command.Args, Port)
 			}
-
 			if Protocol != "all" {
 				command.Args = append(command.Args, "proto")
 				command.Args = append(command.Args, Protocol)
 			}
-
 			if Comment != "" {
 				command.Args = append(command.Args, "comment")
 				command.Args = append(command.Args, Comment)
 			}
-
 			_, err := command.CombinedOutput()
 			if err != nil {
 				logger.Error().Err(err).Msgf("Failed to execute command: %s", command)
@@ -239,7 +251,6 @@ func UfwApply(logger zerolog.Logger) error {
 		logger.Error().Err(err).Msg("Failed to read tmp directory")
 		return err
 	}
-
 	for _, file := range tmpFiles {
 		logger.Info().Msgf("Running ruleset %s", file.Name())
 
@@ -248,23 +259,19 @@ func UfwApply(logger zerolog.Logger) error {
 			logger.Error().Err(err).Msgf("Failed to read tmp file %s", file.Name())
 			return err
 		}
-
 		lines := strings.Split(string(fileContent), "\n")
-
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" {
 				logger.Warn().Msg("Empty line, skipping...")
 				continue
 			}
-
 			var Comment string = ""
 			if strings.Contains(line, "#") {
 				splitLine := strings.Split(line, "#")
 				line = strings.TrimSpace(splitLine[0])
 				Comment = strings.TrimSpace(splitLine[1])
 			}
-
 			lineParts := strings.Split(line, " ")
 
 			IP := lineParts[0]
@@ -281,17 +288,14 @@ func UfwApply(logger zerolog.Logger) error {
 				command.Args = append(command.Args, "port")
 				command.Args = append(command.Args, Port)
 			}
-
 			if Protocol != "all" {
 				command.Args = append(command.Args, "proto")
 				command.Args = append(command.Args, Protocol)
 			}
-
 			if Comment != "" {
 				command.Args = append(command.Args, "comment")
 				command.Args = append(command.Args, Comment)
 			}
-
 			_, err := command.CombinedOutput()
 			if err != nil {
 				logger.Error().Err(err).Msgf("Failed to execute command: %s", command)
@@ -299,6 +303,61 @@ func UfwApply(logger zerolog.Logger) error {
 			}
 		}
 	}
-
 	return nil
+}
+func GetUfwApplyDataForUI(logger zerolog.Logger) ([]lib.KV, string) {
+	var moduleName string
+	var alarmMessage string
+	overallStatus := "s"
+	dryRunDisplay := "SUCCESS"
+	applyDisplay := "SUCCESS"
+
+	moduleName = "dryrun"
+	err := UfwApplyDryRun(logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to dry run ufw rules")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to dry run ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		return []lib.KV{
+			{Key: "Dry Run Status", Value: fmt.Sprintf("ERROR (%v)", err)},
+			{Key: "Apply Status", Value: "SKIPPED"},
+		}, "e"
+	}
+
+	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err == nil && lastAlarm.Status == down {
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW dry run successfully after previous failure", lib.GlobalConfig.Hostname)
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
+
+	moduleName = "apply"
+	err = UfwApply(logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to apply ufw rules")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - Failed to apply ufw rules: %s", lib.GlobalConfig.Hostname, err.Error())
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+
+		return []lib.KV{
+			{Key: "Dry Run Status", Value: dryRunDisplay},
+			{Key: "Apply Status", Value: fmt.Sprintf("ERROR (%v)", err)},
+		}, "e"
+	}
+
+	lastAlarm, err = lib.GetLastZulipAlarm(pluginName, moduleName)
+	if err == nil && lastAlarm.Status == down {
+		logger.Info().Msg("UFW apply succeeded after previous failure")
+		alarmMessage = fmt.Sprintf("[ufwApply] - %s - UFW apply successfully after previous failure", lib.GlobalConfig.Hostname)
+		lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+	}
+
+	sourceCount := fmt.Sprintf("%d", len(lib.UfwApplyConfig.RuleSources))
+	staticCount := fmt.Sprintf("%d", len(lib.UfwApplyConfig.StaticRules))
+
+	return []lib.KV{
+		{Key: "Rule Sources", Value: sourceCount},
+		{Key: "Static Rules", Value: staticCount},
+		{Key: "Dry Run Status", Value: dryRunDisplay},
+		{Key: "Apply Status", Value: applyDisplay},
+	}, overallStatus
 }

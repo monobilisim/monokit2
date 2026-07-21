@@ -111,3 +111,29 @@ func AutoRepair(logger zerolog.Logger) {
 
 	logger.Info().Msgf("MariaDB auto repair completed successfully: %s", string(out))
 }
+
+func GetAutoRepairDataForUI() ([]lib.KV, bool) {
+	hasError := false
+	toolStatus := "Installed"
+
+	if _, err := exec.LookPath("mariadb-check"); err != nil {
+		toolStatus = "NOT INSTALLED (Missing Client Tools)"
+		hasError = true
+	}
+
+	scheduledDay := lib.DBConfig.MariaDB.AutoRepair.Day
+	scheduledHour := lib.DBConfig.MariaDB.AutoRepair.Hour
+
+	if scheduledDay == "" {
+		scheduledDay = "Not Set"
+	}
+	if scheduledHour == "" {
+		scheduledHour = "Not Set"
+	}
+
+	return []lib.KV{
+		{Key: "Auto Repair Tool", Value: toolStatus},
+		{Key: "Scheduled Day", Value: scheduledDay},
+		{Key: "Scheduled Time", Value: scheduledHour},
+	}, hasError
+}

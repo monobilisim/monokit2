@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -70,6 +71,150 @@ func main() {
 	if lib.OsHealthConfig.PowerAlarm.Enabled {
 		CheckSystemPowerHealth(logger)
 	}
+
+	var dashboard strings.Builder
+	dashboard.WriteString(
+		lib.Log(lib.InfoBadge, "Operating system health checks completed.\n\n"),
+	)
+
+	if lib.OsHealthConfig.VersionAlarm.Enabled {
+		appRows, status, hasData := GetAppVersionsForUI()
+		appHeaders := []string{"APPLICATION", "VERSION", "STATE"}
+
+		badge := lib.SuccessBadge
+
+		if status == true {
+			badge = lib.ErrorBadge
+		}
+		if hasData && status {
+			dashboard.WriteString(lib.Log(badge, "Applications on the System:\n"))
+			dashboard.WriteString(lib.RenderTable(appHeaders, appRows))
+			dashboard.WriteString("\n")
+		} else if status {
+			dashboard.WriteString(lib.Log(lib.InfoBadge, "No applications found to display.\n"))
+		}
+	}
+
+	if lib.OsHealthConfig.RamUsageAlarm.Enabled {
+		ramRows, status := GetSystemRAMForUI()
+		badge := lib.SuccessBadge
+		if status == "w" {
+			badge = lib.WarningBadge
+		} else if status == "e" {
+			badge = lib.ErrorBadge
+		}
+		dashboard.WriteString(lib.Log(badge, "System Memory Status:\n"))
+		dashboard.WriteString(lib.RenderTable([]string{"PROPERTY", "VALUE"}, ramRows))
+		dashboard.WriteString("\n\n")
+	}
+
+	if lib.OsHealthConfig.SystemLoadAlarm.Enabled {
+		cpuRows, status := GetSystemLoadForUI()
+		badge := lib.SuccessBadge
+		if status == "w" {
+			badge = lib.WarningBadge
+		} else if status == "e" {
+			badge = lib.ErrorBadge
+		}
+		dashboard.WriteString(
+			lib.Log(badge, "Processor Load Status:\n"))
+		dashboard.WriteString(
+			lib.RenderTable(
+				[]string{"PROPERTY", "VALUE"},
+				cpuRows,
+			))
+		dashboard.WriteString("\n\n")
+	}
+
+	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
+		diskRows, status, hasData := GetSystemDiskForUI()
+		badge := lib.SuccessBadge
+		if status == "w" {
+			badge = lib.WarningBadge
+		} else if status == "e" {
+			badge = lib.ErrorBadge
+		}
+		if hasData {
+			dashboard.WriteString(
+				lib.Log(badge, "System Disk Usage:\n"),
+			)
+			dashboard.WriteString(
+				lib.RenderTable(
+					[]string{"MOUNT POINT", "USED / TOTAL", "USAGE %", "STATUS"},
+					diskRows,
+				),
+			)
+			dashboard.WriteString("\n\n")
+		} else {
+
+		}
+	}
+
+	if lib.OsHealthConfig.DiskUsageAlarm.Enabled {
+		zfsRows, status, hasData := GetSystemZFSForUI()
+		badge := lib.SuccessBadge
+		if status == "w" {
+			badge = lib.WarningBadge
+		} else if status == "e" {
+			badge = lib.ErrorBadge
+		}
+		if hasData {
+			dashboard.WriteString(
+				lib.Log(badge, "ZFS Pool Status:\n"),
+			)
+			dashboard.WriteString(
+				lib.RenderTable(
+					[]string{"POOL", "HEALTH", "CAPACITY", "STATUS"},
+					zfsRows,
+				),
+			)
+			dashboard.WriteString("\n\n")
+		}
+	}
+
+	if lib.OsHealthConfig.PowerAlarm.Enabled {
+		powerRows := GetSystemPowerForUI()
+
+		dashboard.WriteString(
+			lib.Log(lib.WarningBadge, "System Power Status:\n"),
+		)
+		dashboard.WriteString(
+			lib.RenderTable(
+				[]string{"POWER / SYSTEM STATUS", "VALUE"},
+				powerRows,
+			),
+		)
+		dashboard.WriteString("\n\n")
+	}
+	if lib.OsHealthConfig.ServiceHealthAlarm.Enabled {
+		if lib.OsHealthConfig.ServiceHealthAlarm.Enabled && hasSystemd() {
+			systemdRows, status, hasData := GetSystemdForUI()
+			badge := lib.SuccessBadge
+			if status == "w" {
+				badge = lib.WarningBadge
+			} else if status == "e" {
+				badge = lib.ErrorBadge
+			}
+			if hasData {
+				dashboard.WriteString(
+					lib.Log(badge, "Monitored Services:\n"),
+				)
+				dashboard.WriteString(
+					lib.RenderTable(
+						[]string{"SERVICE NAME", "STATUS", "UPTIME", "HEALTH"},
+						systemdRows,
+					),
+				)
+				dashboard.WriteString("\n\n")
+			}
+		}
+		fmt.Println(
+			lib.RenderPluginCard(
+				"OS HEALTH MONITOR",
+				dashboard.String(),
+			),
+		)
+	}
 }
 
 // checks if there is an active ZFS pool
@@ -78,13 +223,11 @@ func hasZFS() bool {
 	if err != nil {
 		return false
 	}
-
 	cmd := exec.Command("zpool", "list", "-H")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
 	}
-
 	return len(strings.TrimSpace(string(output))) > 0
 }
 

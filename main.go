@@ -197,7 +197,6 @@ func main() {
 			return
 		}
 	}
-
 }
 
 func update(intervalName string, logger zerolog.Logger) {

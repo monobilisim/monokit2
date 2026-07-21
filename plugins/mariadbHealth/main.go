@@ -4,6 +4,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
 
@@ -113,4 +114,92 @@ func main() {
 
 		*/
 	}
+
+	var dashboard strings.Builder
+	dashboard.WriteString(
+		lib.Log(lib.InfoBadge, "MARIADB health checks completed. naber\n\n"),
+	)
+
+	if lib.DBConfig.MariaDB.AutoRepair.Enabled {
+
+		repairData, hasError := GetAutoRepairDataForUI()
+
+		badge := lib.InfoBadge
+		if hasError {
+			badge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(badge, "MariaDB Auto Repair Configuration:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(repairData))
+		dashboard.WriteString("\n")
+	}
+	if lib.DBConfig.MariaDB.PMMAgent.Enabled {
+
+		pmmData, pmmHasError := GetPMMDataForUI()
+
+		badge := lib.SuccessBadge
+		if pmmHasError {
+			badge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(badge, "PMM Agent Monitoring Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(pmmData))
+		dashboard.WriteString("\n")
+	}
+
+	if lib.DBConfig.MariaDB.Cluster.Enabled && lib.DBConfig.MariaDB.Cluster.ClusterType == "galera" {
+
+		certData, certStatus := GetClusterCertDataForUI()
+
+		badge := lib.SuccessBadge
+
+		if certStatus == "w" {
+			badge = lib.WarningBadge
+		} else if certStatus == "e" {
+			badge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(badge, "Galera Cluster Certification Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(certData))
+		dashboard.WriteString("\n")
+	}
+	if lib.DBConfig.MariaDB.Cluster.Enabled && lib.DBConfig.MariaDB.Cluster.ClusterType == "galera" {
+
+		inaccessibleData, inaccessibleStatus := GetInaccessibleClusterDataForUI()
+
+		inaccBadge := lib.SuccessBadge
+
+		if inaccessibleStatus == "w" {
+			inaccBadge = lib.WarningBadge
+		} else if inaccessibleStatus == "e" {
+			inaccBadge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(inaccBadge, "Galera Cluster Accessibility:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(inaccessibleData))
+		dashboard.WriteString("\n")
+	}
+	if lib.DBConfig.MariaDB.Cluster.Enabled && lib.DBConfig.MariaDB.Cluster.ClusterType == "galera" {
+
+		certData, certStatus := GetClusterSyncedDataForUI()
+
+		badge := lib.SuccessBadge
+
+		if certStatus == "w" {
+			badge = lib.WarningBadge
+		} else if certStatus == "e" {
+			badge = lib.ErrorBadge
+		}
+
+		dashboard.WriteString(lib.Log(badge, "Galera Cluster Certification Status:\n"))
+		dashboard.WriteString(lib.RenderKeyValueList(certData))
+		dashboard.WriteString("\n")
+	}
+	fmt.Println(
+		lib.RenderPluginCard(
+			"MARIADB HEALTH MONITOR",
+			dashboard.String(),
+		),
+	)
+
 }

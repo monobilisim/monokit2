@@ -35,11 +35,8 @@ func CheckPMM(logger zerolog.Logger) {
 	// active, inactive, failed, activating, deactivating, unknown, empty string
 	out, _ := exec.Command("systemctl", "is-active", pmmServiceName).Output()
 	activeState := strings.TrimSpace(string(out))
-
 	isActive := activeState == "active"
-
 	logger.Debug().Msgf("pmm-agent active state: %s", activeState)
-
 	lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to retrieve last PMM alarm from database.")
@@ -63,4 +60,32 @@ func CheckPMM(logger zerolog.Logger) {
 			lib.SendZulipAlarm(msg, pluginName, moduleName, up)
 		}
 	}
+}
+
+func GetPMMDataForUI() ([]lib.KV, bool) {
+	hasError := false
+	activeState := "unknown"
+
+	if _, err := exec.LookPath("pmm-agent"); err != nil {
+		return []lib.KV{
+			{Key: "PMM Agent", Value: "NOT INSTALLED"},
+		}, true
+	}
+
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		return []lib.KV{
+			{Key: "Systemctl", Value: "NOT FOUND (Cannot check service)"},
+		}, true
+	}
+	out, _ := exec.Command("systemctl", "is-active", pmmServiceName).Output()
+	activeState = strings.TrimSpace(string(out))
+
+	if activeState != "active" {
+		hasError = true
+	}
+
+	return []lib.KV{
+		{Key: "Service Name", Value: pmmServiceName},
+		{Key: "Active State", Value: strings.ToUpper(activeState)},
+	}, hasError
 }

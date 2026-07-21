@@ -111,3 +111,24 @@ func AutoRepair(logger zerolog.Logger) {
 
 	logger.Info().Msgf("MySQL auto repair completed successfully: %s", string(out))
 }
+func GetAutoRepairDataForUI() ([]lib.KV, string) {
+	if !lib.DBConfig.Mysql.AutoRepair.Enabled {
+		return []lib.KV{
+			{Key: "Auto Repair", Value: "DISABLED"},
+		}, "w"
+	}
+
+	if _, err := exec.LookPath("mysqlcheck"); err != nil {
+		return []lib.KV{
+			{Key: "mysqlcheck", Value: "NOT INSTALLED"},
+			{Key: "Auto Repair", Value: "ERROR"},
+		}, "e"
+	}
+
+	schedule := fmt.Sprintf("%s at %s", lib.DBConfig.Mysql.AutoRepair.Day, lib.DBConfig.Mysql.AutoRepair.Hour)
+
+	return []lib.KV{
+		{Key: "Auto Repair", Value: "ENABLED"},
+		{Key: "Schedule", Value: schedule},
+	}, "s"
+}

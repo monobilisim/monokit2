@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -117,4 +118,19 @@ func UfwApplyDryRun(logger zerolog.Logger) error {
 	}
 
 	return nil
+}
+func GetUfwDryRunDataForUI() ([]lib.KV, string) {
+	staticCount := len(lib.UfwApplyConfig.StaticRules)
+
+	fileCount := 0
+	tmpFiles, err := os.ReadDir(lib.UfwApplyConfig.RulesetDir + "/tmp")
+	if err == nil {
+		fileCount = len(tmpFiles)
+	}
+
+	return []lib.KV{
+		{Key: "Static Rules Tested", Value: fmt.Sprintf("%d", staticCount)},
+		{Key: "Ruleset Files Tested", Value: fmt.Sprintf("%d", fileCount)},
+		{Key: "Dry Run Result", Value: "SUCCESS"},
+	}, "s"
 }
