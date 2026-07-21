@@ -63,3 +63,11 @@ postgres:
   alarm:
     enabled: true
   leader_switch_hook: "echo 'leader switch'"
+
+redis:
+  credentials:
+    port: "6379"
+    password: ""
+  slave_count: 0
+  alarm:
+    enabled: true
