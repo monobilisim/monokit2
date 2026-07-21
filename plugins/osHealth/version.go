@@ -358,19 +358,24 @@ func GetSystemdForUI() ([][]string, string, bool) {
 	var rows [][]string
 	overallStatus := "s"
 	hasData := true
+	var services []SystemdUnit
+	var err error
 
-	// 1. OS check to prevent crashes due to dbus errors on Windows
-	if runtime.GOOS != "linux" {
-		return [][]string{{"System", "Systemd only works in a Linux environment", "-", "-"}}, "w", false
+	switch runtime.GOOS {
+	case "linux":
+		services, err = GetServiceStatus()
+		if err != nil {
+			return [][]string{{"System Error", "Failed to read service statuses", "-", "-"}}, "w", false
+		}
+	case "windows":
+		return nil, "w", false
+
+	case "freebsd":
+		return nil, "w", false
+	default:
+		return nil, "w", false
 	}
 
-	// 2. Call the function from the original code to get the services
-	services, err := GetServiceStatus()
-	if err != nil {
-		return [][]string{{"System Error", "Failed to read service statuses", "-", "-"}}, "w", false
-	}
-
-	// 3. Apply the exact same filtering from the original code to find monitored services
 	monitoredCount := 0
 	for _, service := range services {
 		matched := false
