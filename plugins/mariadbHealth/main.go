@@ -117,7 +117,7 @@ func main() {
 
 	var dashboard strings.Builder
 	dashboard.WriteString(
-		lib.Log(lib.InfoBadge, "MARIADB health checks completed.\n\n"),
+		lib.Log(lib.InfoBadge, "MARIADB health checks completed. naber\n\n"),
 	)
 
 	if lib.DBConfig.MariaDB.AutoRepair.Enabled {
