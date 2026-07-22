@@ -1,4 +1,4 @@
-//go:build redisHealth
+//go:build valkeyHealth
 
 package main
 
@@ -12,7 +12,7 @@ import (
 )
 
 var version string
-var pluginName string = "redisHealth"
+var pluginName string = "valkeyHealth"
 var up string = "up"
 var down string = "down"
 var configFiles []string = []string{"db.yml"}
@@ -35,15 +35,15 @@ func main() {
 	}
 	moduleName := "connection"
 	lib.InitializeDatabase()
-	logger.Info().Msg("Starting Redis Health monitoring plugin...")
+	logger.Info().Msg("Starting Valkey Health monitoring plugin...")
 
-	if !DetectRedis() {
-		logger.Warn().Msg("Redis service not detected")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+	if !DetectValkey() {
+		logger.Warn().Msg("Valkey service not detected")
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 			if err != nil || lastAlarm.Status != down {
 				lib.SendZulipAlarm(
-					"Redis connection failed",
+					"Valkey connection failed",
 					pluginName,
 					moduleName,
 					down,
@@ -52,13 +52,13 @@ func main() {
 		}
 		return
 	}
-	err = InitRedis()
+	err = InitValkey()
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed to initialize Redis")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		logger.Error().Err(err).Msg("Failed to initialize Valkey")
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis connection failed",
+				alarmMessage := fmt.Sprintf("[%s] - %s - Valkey connection failed",
 					pluginName,
 					lib.GlobalConfig.Hostname,
 				)
@@ -67,26 +67,25 @@ func main() {
 		}
 		return
 	}
-	if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+	if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
 		if err == nil && lastAlarm.Status == down {
-			alarmMessage := fmt.Sprintf("[%s] - %s - Redis connection restored",
+			alarmMessage := fmt.Sprintf("[%s] - %s - Valkey connection restored",
 				pluginName,
 				lib.GlobalConfig.Hostname,
 			)
 			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
 		}
 	}
-	readable, writeable := TestRedisReadWrite()
+	readable, writeable := TestValkeyReadWrite()
 	moduleRead := "read"
 	moduleWrite := "write"
 	if !readable {
-		logger.Error().Msg("Redis read test failed")
-
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		logger.Error().Msg("Valkey read test failed")
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
 			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis read test failed",
+				alarmMessage := fmt.Sprintf("[%s] - %s - Valkey read test failed",
 					pluginName,
 					lib.GlobalConfig.Hostname,
 				)
@@ -94,10 +93,10 @@ func main() {
 			}
 		}
 	} else {
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
 			if err == nil && lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis read test restored",
+				alarmMessage := fmt.Sprintf("[%s] - %s - Valkey read test restored",
 					pluginName,
 					lib.GlobalConfig.Hostname,
 				)
@@ -106,11 +105,11 @@ func main() {
 		}
 	}
 	if !writeable {
-		logger.Error().Msg("Redis write test failed")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		logger.Error().Msg("Valkey write test failed")
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
 			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis write test failed",
+				alarmMessage := fmt.Sprintf("[%s] - %s - Valkey write test failed",
 					pluginName,
 					lib.GlobalConfig.Hostname,
 				)
@@ -118,10 +117,10 @@ func main() {
 			}
 		}
 	} else {
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
 			if err == nil && lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis write test restored",
+				alarmMessage := fmt.Sprintf("[%s] - %s - Valkey write test restored",
 					pluginName,
 					lib.GlobalConfig.Hostname,
 				)
@@ -129,24 +128,24 @@ func main() {
 			}
 		}
 	}
-	isMaster := IsRedisMaster()
+	isMaster := IsValkeyMaster()
 	slaveCount := GetActualSlaveCount()
 	clients := GetConnectedClients()
-	uptime := FormatUptime(GetRedisUptime())
+	uptime := FormatUptime(GetValkeyUptime())
 	memory := GetUsedMemory()
-	isSentinel := IsRedisSentinel()
+	isSentinel := IsValkeySentinel()
 	persistence := GetPersistenceMode()
-	expectedSlaveCount := lib.DBConfig.Redis.SlaveCount
+	expectedSlaveCount := lib.DBConfig.Valkey.SlaveCount
 	slaveOK := CheckSlaveCount(expectedSlaveCount)
 
 	moduleSlave := "slave_count"
 	if isSentinel && isMaster {
 		if slaveOK {
-			if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleSlave)
 				if err == nil && lastAlarm.Status == down {
 					alarmMessage := fmt.Sprintf(
-						"[%s] - %s - Redis slave count restored",
+						"[%s] - %s - Valkey slave count restored",
 						pluginName,
 						lib.GlobalConfig.Hostname,
 					)
@@ -159,11 +158,11 @@ func main() {
 				Int("actual", slaveCount).
 				Msg("Slave count mismatch")
 
-			if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			if lib.DBConfig.Valkey.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
 				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleSlave)
 				if err != nil || lastAlarm.Status != down {
 					alarmMessage := fmt.Sprintf(
-						"[%s] - %s - Redis slave count mismatch (Expected: %d, Actual: %d)",
+						"[%s] - %s - Valkey slave count mismatch (Expected: %d, Actual: %d)",
 						pluginName,
 						lib.GlobalConfig.Hostname,
 						expectedSlaveCount,
@@ -175,14 +174,14 @@ func main() {
 		}
 	}
 
-	logger.Info().Msg("Redis service detected.")
+	logger.Info().Msg("Valkey service detected.")
 	var dashboard strings.Builder
 	dashboard.WriteString(
-		lib.Log(lib.InfoBadge, "Redis health checks completed.\n\n"),
+		lib.Log(lib.InfoBadge, "Valkey health checks completed.\n\n"),
 	)
 	serviceStatus := "Running"
-	if !isServiceActive("redis.service") &&
-		!isServiceActive("redis-server.service") {
+	if !isServiceActive("valkey.service") &&
+		!isServiceActive("valkey-server.service") {
 		serviceStatus = "Stopped"
 	}
 	role := "Slave"
@@ -192,7 +191,7 @@ func main() {
 	if CheckRoleChange(role) {
 		logger.Warn().
 			Str("new_role", role).
-			Msg("Redis role changed")
+			Msg("Valkey role changed")
 	}
 	sentinel := "Disabled"
 	if isSentinel {
@@ -206,10 +205,10 @@ func main() {
 	if writeable {
 		writeStatus = "OK"
 	}
-	version := GetRedisVersion()
-	redisData := []lib.KV{
+	valkeyVersion := GetValkeyVersion()
+	valkeyData := []lib.KV{
 		{Key: "Service", Value: serviceStatus},
-		{Key: "Version", Value: version},
+		{Key: "Version", Value: valkeyVersion},
 		{Key: "Role", Value: role},
 		{Key: "Sentinel", Value: sentinel},
 		{Key: "Persistence", Value: persistence},
@@ -222,15 +221,15 @@ func main() {
 		{Key: "Memory Usage", Value: memory},
 	}
 	dashboard.WriteString(
-		lib.Log(lib.InfoBadge, "Redis Status\n"),
+		lib.Log(lib.InfoBadge, "Valkey Status\n"),
 	)
 	dashboard.WriteString(
-		lib.RenderKeyValueList(redisData),
+		lib.RenderKeyValueList(valkeyData),
 	)
 	dashboard.WriteString("\n")
 	fmt.Println(
 		lib.RenderPluginCard(
-			"REDIS HEALTH MONITOR",
+			"VALKEY HEALTH MONITOR",
 			dashboard.String(),
 		),
 	)
