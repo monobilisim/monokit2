@@ -33,113 +33,23 @@ func main() {
 	if err != nil {
 		panic("Failed to initialize logger: " + err.Error())
 	}
-	moduleName := "connection"
 	lib.InitializeDatabase()
 	logger.Info().Msg("Starting Redis Health monitoring plugin...")
 
-	if !DetectRedis() {
-		logger.Warn().Msg("Redis service not detected")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
-			if err != nil || lastAlarm.Status != down {
-				lib.SendZulipAlarm(
-					"Redis connection failed",
-					pluginName,
-					moduleName,
-					down,
-				)
-			}
-		}
-		return
-	}
-	err = InitRedis()
+	err = CheckRedisConnection()
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed to initialize Redis")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
-			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis connection failed",
-					pluginName,
-					lib.GlobalConfig.Hostname,
-				)
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
-			}
-		}
 		return
 	}
-	if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
-		if err == nil && lastAlarm.Status == down {
-			alarmMessage := fmt.Sprintf("[%s] - %s - Redis connection restored",
-				pluginName,
-				lib.GlobalConfig.Hostname,
-			)
-			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
-		}
-	}
-	readable, writeable := TestRedisReadWrite()
-	moduleRead := "read"
-	moduleWrite := "write"
-	if !readable {
-		logger.Error().Msg("Redis read test failed")
+	readable, writeable := CheckRedisReadWrite()
 
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
-			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis read test failed",
-					pluginName,
-					lib.GlobalConfig.Hostname,
-				)
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleRead, down)
-			}
-		}
-	} else {
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
-			if err == nil && lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis read test restored",
-					pluginName,
-					lib.GlobalConfig.Hostname,
-				)
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleRead, up)
-			}
-		}
-	}
-	if !writeable {
-		logger.Error().Msg("Redis write test failed")
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
-			if err != nil || lastAlarm.Status != down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis write test failed",
-					pluginName,
-					lib.GlobalConfig.Hostname,
-				)
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleWrite, down)
-			}
-		}
-	} else {
-		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
-			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
-			if err == nil && lastAlarm.Status == down {
-				alarmMessage := fmt.Sprintf("[%s] - %s - Redis write test restored",
-					pluginName,
-					lib.GlobalConfig.Hostname,
-				)
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleWrite, up)
-			}
-		}
-	}
-	isMaster := IsRedisMaster()
-	slaveCount := GetActualSlaveCount()
+	isMaster, slaveCount, isSentinel, slaveOK := CheckRedisSlaveCount()
 	clients := GetConnectedClients()
 	uptime := FormatUptime(GetRedisUptime())
 	memory := GetUsedMemory()
-	isSentinel := IsRedisSentinel()
 	persistence := GetPersistenceMode()
-	expectedSlaveCount := lib.DBConfig.Redis.SlaveCount
-	slaveOK := CheckSlaveCount(expectedSlaveCount)
-
 	moduleSlave := "slave_count"
+	expectedSlaveCount := lib.DBConfig.Redis.SlaveCount
+
 	if isSentinel && isMaster {
 		if slaveOK {
 			if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
@@ -234,4 +144,155 @@ func main() {
 			dashboard.String(),
 		),
 	)
+}
+func CheckRedisConnection() error {
+	moduleName := "connection"
+	if !DetectRedis() {
+		lib.Logger.Warn().Msg("Redis service not detected")
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+			if err != nil || lastAlarm.Status != down {
+				lib.SendZulipAlarm(
+					"Redis connection failed",
+					pluginName,
+					moduleName,
+					down,
+				)
+			}
+		}
+		return fmt.Errorf("redis service not detected")
+	}
+	err := InitRedis()
+	if err != nil {
+		lib.Logger.Error().Err(err).Msg("Failed to initialize Redis")
+
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+			if err != nil || lastAlarm.Status != down {
+				alarmMessage := fmt.Sprintf(
+					"[%s] - %s - Redis connection failed",
+					pluginName,
+					lib.GlobalConfig.Hostname,
+				)
+				lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+			}
+		}
+		return err
+	}
+	if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+		lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+		if err == nil && lastAlarm.Status == down {
+			alarmMessage := fmt.Sprintf(
+				"[%s] - %s - Redis connection restored",
+				pluginName,
+				lib.GlobalConfig.Hostname,
+			)
+			lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+		}
+	}
+	return nil
+}
+func CheckRedisReadWrite() (bool, bool) {
+	readable, writeable := TestRedisReadWrite()
+
+	moduleRead := "read"
+	moduleWrite := "write"
+
+	if !readable {
+		lib.Logger.Error().Msg("Redis read test failed")
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
+			if err != nil || lastAlarm.Status != down {
+				alarmMessage := fmt.Sprintf(
+					"[%s] - %s - Redis read test failed",
+					pluginName,
+					lib.GlobalConfig.Hostname,
+				)
+				lib.SendZulipAlarm(alarmMessage, pluginName, moduleRead, down)
+			}
+		}
+	} else {
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleRead)
+			if err == nil && lastAlarm.Status == down {
+				alarmMessage := fmt.Sprintf(
+					"[%s] - %s - Redis read test restored",
+					pluginName,
+					lib.GlobalConfig.Hostname,
+				)
+				lib.SendZulipAlarm(alarmMessage, pluginName, moduleRead, up)
+			}
+		}
+	}
+	if !writeable {
+		lib.Logger.Error().Msg("Redis write test failed")
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
+			if err != nil || lastAlarm.Status != down {
+				alarmMessage := fmt.Sprintf(
+					"[%s] - %s - Redis write test failed",
+					pluginName,
+					lib.GlobalConfig.Hostname,
+				)
+				lib.SendZulipAlarm(alarmMessage, pluginName, moduleWrite, down)
+			}
+		}
+	} else {
+		if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+			lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleWrite)
+			if err == nil && lastAlarm.Status == down {
+				alarmMessage := fmt.Sprintf(
+					"[%s] - %s - Redis write test restored",
+					pluginName,
+					lib.GlobalConfig.Hostname,
+				)
+				lib.SendZulipAlarm(alarmMessage, pluginName, moduleWrite, up)
+			}
+		}
+	}
+	return readable, writeable
+}
+func CheckRedisSlaveCount() (bool, int, bool, bool) {
+	isMaster := IsRedisMaster()
+	slaveCount := GetActualSlaveCount()
+	isSentinel := IsRedisSentinel()
+	expectedSlaveCount := lib.DBConfig.Redis.SlaveCount
+	slaveOK := CheckSlaveCount(expectedSlaveCount)
+	moduleSlave := "slave_count"
+
+	if isSentinel && isMaster {
+		if slaveOK {
+			if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleSlave)
+				if err == nil && lastAlarm.Status == down {
+					alarmMessage := fmt.Sprintf(
+						"[%s] - %s - Redis slave count restored",
+						pluginName,
+						lib.GlobalConfig.Hostname,
+					)
+					lib.SendZulipAlarm(alarmMessage, pluginName, moduleSlave, up)
+				}
+			}
+		} else {
+			lib.Logger.Warn().
+				Int("expected", expectedSlaveCount).
+				Int("actual", slaveCount).
+				Msg("Slave count mismatch")
+
+			if lib.DBConfig.Redis.Alarm.Enabled && lib.GlobalConfig.ZulipAlarm.Enabled {
+				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleSlave)
+				if err != nil || lastAlarm.Status != down {
+					alarmMessage := fmt.Sprintf(
+						"[%s] - %s - Redis slave count mismatch (Expected: %d, Actual: %d)",
+						pluginName,
+						lib.GlobalConfig.Hostname,
+						expectedSlaveCount,
+						slaveCount,
+					)
+					lib.SendZulipAlarm(alarmMessage, pluginName, moduleSlave, down)
+				}
+			}
+		}
+	}
+	return isMaster, slaveCount, isSentinel, slaveOK
 }
