@@ -71,3 +71,14 @@ redis:
   slave_count: 0
   alarm:
     enabled: true
+
+valkey:
+  credentials:
+    host: localhost
+    port: "6379"
+    password: ""
+
+  slave-count: 0
+
+  alarm:
+    enabled: true
