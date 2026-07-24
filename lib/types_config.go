@@ -129,6 +129,7 @@ type DBConfigType struct {
 	PostgreSQL struct {
 		ConnectionString string `yaml:"connection-string"`
 		ActivityLimit    int    `yaml:"activity-limit"`
+		ConnectionLimit  int    `yaml:"connection-limit"`
 
 		Alarm struct {
 			Enabled   bool `yaml:"enabled"`

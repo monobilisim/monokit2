@@ -14,7 +14,6 @@ import (
 
 const (
 	activityQuery = "SELECT clock_timestamp() - pg_stat_activity.query_start AS duration, * FROM pg_stat_activity"
-	moduleName    = "process"
 )
 
 type activityInfo struct {
@@ -27,6 +26,7 @@ func CheckActivity(logger zerolog.Logger) {
 
 	activities := make([]activityInfo, 0, 30)
 	activeActivities := make([]activityInfo, 0, 10)
+	connectionActivities := make([]activityInfo, 0, 20)
 
 	rows, err := Connection.Query(context.Background(), activityQuery)
 	if err != nil {
@@ -63,6 +63,10 @@ func CheckActivity(logger zerolog.Logger) {
 			activeActivities = append(activeActivities, row)
 		}
 
+		if row.Fields["backend_type"] == "client backend" {
+			connectionActivities = append(connectionActivities, row)
+		}
+
 	}
 	if err := rows.Err(); err != nil {
 		logger.Error().Err(err).Msg("Error occurred during rows iteration")
@@ -73,7 +77,8 @@ func CheckActivity(logger zerolog.Logger) {
 	logger.Debug().Interface("activities", activities).Msg("PostgreSQL process details")
 
 	checkLongRunningQueries(activeActivities, logger)
-	checkThreshold(len(activeActivities), logger)
+	checkThreshold(len(activeActivities), lib.DBConfig.PostgreSQL.ActivityLimit, "ActiveActivities", logger)
+	checkThreshold(len(activeActivities), lib.DBConfig.PostgreSQL.ConnectionLimit, "Connection", logger)
 }
 
 func ToDuration(i pgtype.Interval) time.Duration {
@@ -94,6 +99,7 @@ func checkLongRunningQueries(activeActivities []activityInfo, logger zerolog.Log
 		return
 	}
 
+	moduleName := "LongQuery"
 	longRunningActivities := make([]activityInfo, 0, len(activeActivities))
 
 	for _, activity := range activeActivities {
@@ -129,32 +135,30 @@ func checkLongRunningQueries(activeActivities []activityInfo, logger zerolog.Log
 	}
 }
 
-func checkThreshold(activeActivityCount int, logger zerolog.Logger) {
-	activityThreshold := lib.DBConfig.PostgreSQL.ActivityLimit
-
+func checkThreshold(activityCount int, activityThreshold int, thresholdThing string, logger zerolog.Logger) {
 	// Down alarm if process count is above threshold
 	if lib.DBConfig.PostgreSQL.Alarm.Enabled {
-		if activeActivityCount > activityThreshold {
-			alarmMessage := fmt.Sprintf("[%s] - %s - PostgreSQL activity count has been more than the set limit %d, (%d)", pluginName, lib.GlobalConfig.Hostname, activityThreshold, activeActivityCount)
+		if activityCount > activityThreshold {
+			alarmMessage := fmt.Sprintf("[%s] - %s - PostgreSQL %s count has been more than the set limit %d, (%d)", pluginName, lib.GlobalConfig.Hostname, thresholdThing, activityThreshold, activityCount)
 
 			if lib.GlobalConfig.ZulipAlarm.Enabled {
-				lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, down)
+				lib.SendZulipAlarm(alarmMessage, pluginName, thresholdThing, down)
 			}
 
 		}
 
 		// UP alarm if process count is below threshold
-		if activeActivityCount < activityThreshold {
-			alarmMessage := fmt.Sprintf("[%s] - %s - PostgreSQL activity count is back to normal (%d)", pluginName, lib.GlobalConfig.Hostname, activeActivityCount)
+		if activityCount < activityThreshold {
+			alarmMessage := fmt.Sprintf("[%s] - %s - PostgreSQL %s count is back to normal (%d)", pluginName, lib.GlobalConfig.Hostname, thresholdThing, activityCount)
 
 			if lib.GlobalConfig.ZulipAlarm.Enabled {
-				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, moduleName)
+				lastAlarm, err := lib.GetLastZulipAlarm(pluginName, thresholdThing)
 				if err != nil {
 					logger.Error().Err(err).Msg("Failed to get last Zulip alarm")
 				}
 
 				if lastAlarm.Status == down {
-					lib.SendZulipAlarm(alarmMessage, pluginName, moduleName, up)
+					lib.SendZulipAlarm(alarmMessage, pluginName, thresholdThing, up)
 				}
 			}
 		}
