@@ -1,6 +1,6 @@
 FROM golang:1.25-trixie
 
-ENV container=docker
+ENV container=podman
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CGO_ENABLED=1
 
