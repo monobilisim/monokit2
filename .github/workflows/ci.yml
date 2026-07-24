@@ -12,24 +12,16 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Set up Go 1.25
         uses: actions/setup-go@v6
         with:
           go-version: 1.25
 
+      - name: Set up Just
+        uses: extractions/setup-just@v3
+
       - name: Build binaries
-        run: |
-          mkdir -p ./bin
-
-          ACTIVE_PLUGINS=(osHealth)
-          # Always build the main devel binary
-          go build -ldflags "-X 'main.version=devel'" -o ./bin/monokit2 ./main.go
-
-          ACTIVE_PLUGINS=(osHealth)
-          # Build devel binaries for active plugins
-          for PLUGIN_NAME in "${ACTIVE_PLUGINS[@]}" ; do
-            cd plugins/$PLUGIN_NAME || exit 1
-            go build -ldflags "-X 'main.version=devel'" --tags="$PLUGIN_NAME" -o ../bin/${PLUGIN_NAME}
-            cd ../..
-          done
+        run: VERSION=devel just build

@@ -1,12 +1,11 @@
-name: Go Build & Release
+name: Monokit2 Build & Release
 
 on:
   push:
     branches:
-      - main # devel builds on main branch
+      - main  # devel builds on main branch
     tags:
-      - "v*" # full releases for main binary
-      - "*-v*" # full releases for plugins
+      - "v*"  # full releases for main binary
   workflow_dispatch:
 
 jobs:
@@ -16,39 +15,31 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Set up Go 1.25
         uses: actions/setup-go@v6
         with:
           go-version: 1.25
 
+      - name: Set up Just
+        uses: extractions/setup-just@v3
+
       - name: Build binaries
         id: build
         run: |
-          mkdir -p ./bin
-          TAG_NAME=${GITHUB_REF##*/}
-
-          if [[ "$TAG_NAME" == v* ]]; then
-            # Main release
-            make build VERSION="TAG_NAME"
-
-          elif [[ "$TAG_NAME" == *-v* ]]; then
-            # Plugin release (dynamic plugin name)
-            PLUGIN_NAME=${TAG_NAME%%-*}
-            make build PLUGIN="$PLUGIN_NAME" VERSION="${TAG_NAME}"
-
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="$GITHUB_REF_NAME" just build-main
           else
-            # Builds everything on devel build
-            make
+            VERSION=devel just build-main
           fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: go-binaries
-          path: |
-            bin/
-            plugins/bin/
+          path: bin/monokit2
 
   test:
     needs: build
@@ -57,6 +48,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Install Podman
         run: |
@@ -91,13 +84,7 @@ jobs:
 
       - name: Generate checksums
         run: |
-          touch checksums.txt
-          if [ -d "bin" ] && [ "$(ls -A bin 2>/dev/null)" ]; then
-            (cd bin && sha256sum *) >> checksums.txt 2>/dev/null || true
-          fi
-          if [ -d "plugins/bin" ] && [ "$(ls -A plugins/bin 2>/dev/null)" ]; then
-            (cd plugins/bin && sha256sum *) >> checksums.txt 2>/dev/null || true
-          fi
+          (cd bin && sha256sum monokit2) > checksums.txt
           echo "Generated checksums:"
           cat checksums.txt
 
@@ -113,8 +100,7 @@ jobs:
         uses: softprops/action-gh-release@v2.0.5
         with:
           files: |
-            bin/*
-            plugins/bin/*
+            bin/monokit2
             checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,13 +124,7 @@ jobs:
 
       - name: Generate checksums
         run: |
-          touch checksums.txt
-          if [ -d "bin" ] && [ "$(ls -A bin 2>/dev/null)" ]; then
-            (cd bin && sha256sum *) >> checksums.txt 2>/dev/null || true
-          fi
-          if [ -d "plugins/bin" ] && [ "$(ls -A plugins/bin 2>/dev/null)" ]; then
-            (cd plugins/bin && sha256sum *) >> checksums.txt 2>/dev/null || true
-          fi
+          (cd bin && sha256sum monokit2) > checksums.txt
           echo "Generated checksums:"
           cat checksums.txt
 
@@ -166,8 +146,7 @@ jobs:
           name: Devel Release (Latest)
           prerelease: true
           files: |
-            bin/*
-            plugins/bin/*
+            bin/monokit2
             checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
