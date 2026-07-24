@@ -13,6 +13,6 @@
 [submodule "plugins/ufwApply"]
 	path = plugins/ufwApply
 	url = git@github.com:monobilisim/monokit_ufwApply.git
-[submodule "plugins/skeleton-plugin"]
-	path = plugins/skeleton-plugin
+[submodule "plugins/pluginTemplate"]
+	path = plugins/pluginTemplate
 	url = git@github.com:monobilisim/monokit_pluginTemplate.git
