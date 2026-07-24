@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	lib "github.com/monobilisim/monokit2/lib"
+	lib "github.com/monobilisim/monokit_lib"
 	"github.com/rs/zerolog"
 )
 
