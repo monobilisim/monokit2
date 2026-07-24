@@ -1,0 +1,18 @@
+[submodule "lib"]
+	path = lib
+	url = git@github.com:monobilisim/monokit_lib.git
+[submodule "plugins/osHealth"]
+	path = plugins/osHealth
+	url = git@github.com:monobilisim/monokit_osHealth.git
+[submodule "plugins/mariadbHealth"]
+	path = plugins/mariadbHealth
+	url = git@github.com:monobilisim/monokit_mariadbHealth.git
+[submodule "plugins/mysqlHealth"]
+	path = plugins/mysqlHealth
+	url = git@github.com:monobilisim/monokit_mysqlHealth.git
+[submodule "plugins/ufwApply"]
+	path = plugins/ufwApply
+	url = git@github.com:monobilisim/monokit_ufwApply.git
+[submodule "plugins/skeleton-plugin"]
+	path = plugins/skeleton-plugin
+	url = git@github.com:monobilisim/monokit_pluginTemplate.git
