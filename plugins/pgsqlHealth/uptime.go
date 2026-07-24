@@ -1,9 +1,12 @@
+//go:build pgsqlHealth
+
 package main
 
 import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 )
 
@@ -23,9 +26,12 @@ func LogUptime(logger zerolog.Logger) {
 }
 
 func GetUptime(logger zerolog.Logger) (uptime UptimeInfo, err error) {
-	err = Connection.QueryRow(context.Background(), uptimeQuery).Scan(&uptime.StartTime, &uptime.Uptime)
+	var interval pgtype.Interval
+	err = Connection.QueryRow(context.Background(), uptimeQuery).Scan(&uptime.StartTime, &interval)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to select pg_postmaster_start_time()")
+		return
 	}
+	uptime.Uptime = ToDuration(interval)
 	return
 }

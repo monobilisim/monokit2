@@ -1,3 +1,5 @@
+//go:build pgsqlHealth
+
 package main
 
 import (
@@ -41,7 +43,7 @@ func main() {
 		return
 	}
 
-	logger.Info().Msg("Starting MySQL Health monitoring plugin...")
+	logger.Info().Msg("Starting PostgreSQL Health monitoring plugin...")
 
 	Connection, err = ConnectPSQL(logger)
 	if err != nil {
@@ -55,8 +57,8 @@ func main() {
 		return
 	}
 
-	psqllInDocker := IsPsqlInDocker(logger)
-	if psqllInDocker {
+	psqlInDocker := IsPsqlInDocker(logger)
+	if psqlInDocker {
 		logger.Info().Msg("PostgreSQL appears to be running in Docker. This may affect connection methods and performance.")
 	}
 

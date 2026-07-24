@@ -1,3 +1,5 @@
+//go:build pgsqlHealth
+
 package main
 
 import (

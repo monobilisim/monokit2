@@ -59,5 +59,8 @@ postgresql:
   activity-limit: 30
   alarm:
     enabled: true
+    long-query:
+      enabled: true
+      duration-seconds: 60
   pmm-agent:
     enabled: false
