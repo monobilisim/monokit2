@@ -1,2 +1,6 @@
 .env
 monokit2.log
+
+# Local dev workspace — keeps plugins building against ./lib instead of the published module
+go.work
+go.work.sum

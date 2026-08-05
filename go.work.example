@@ -1,0 +1,13 @@
+go 1.25.5
+
+use (
+	.
+	./lib
+	./plugins/mariadbHealth
+	./plugins/mysqlHealth
+	./plugins/osHealth
+	./plugins/osHealth/vlib
+	./plugins/pgsqlHealth
+	./plugins/pluginTemplate
+	./plugins/ufwApply
+)
