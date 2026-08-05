@@ -74,6 +74,21 @@ postgresql:
     enabled: false
   alarm:
     enabled: true
+  wal-g:
+    enabled: false
+    verify-hour: "03:00" # 24h HH:MM; the daily wal-g verify runs when the plugin runs in this minute
+    run-as-user: "postgres" # wal-g is executed as this OS user when the plugin runs as root
+  patroni:
+    enabled: false
+    config-path: "/etc/patroni/patroni.yml"
+    leader-switch-hook: "" # shell command executed when this node becomes the leader
+  consul:
+    enabled: false
+    url: "http://localhost:8500"
+    dns-port: 8600
+  haproxy:
+    enabled: false
+    config-path: "/etc/haproxy/haproxy.cfg"
   # Not implemented yet, can be added in the future versions
   cluster:
     enabled: false
