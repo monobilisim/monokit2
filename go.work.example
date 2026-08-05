@@ -3,11 +3,30 @@ go 1.25.5
 use (
 	.
 	./lib
+	./plugins/esHealth
+	./plugins/k8sHealth
+	./plugins/lbPolicy
 	./plugins/mariadbHealth
+	./plugins/mongodbHealth
 	./plugins/mysqlHealth
+	./plugins/opnsenseHealth
 	./plugins/osHealth
 	./plugins/osHealth/vlib
 	./plugins/pgsqlHealth
 	./plugins/pluginTemplate
+	./plugins/pmgHealth
+	./plugins/postalHealth
+	./plugins/pritunlHealth
+	./plugins/redisHealth
+	./plugins/rmqHealth
+	./plugins/sshNotifier
+	./plugins/traefikHealth
 	./plugins/ufwApply
+	./plugins/upCheck
+	./plugins/valkeyHealth
+	./plugins/vaultHealth
+	./plugins/winHealth
+	./plugins/wppconnectHealth
+	./plugins/zimbraHealth
+	./plugins/zimbraLdap
 )

@@ -16,3 +16,6 @@
 [submodule "plugins/pluginTemplate"]
 	path = plugins/pluginTemplate
 	url = git@github.com:monobilisim/monokit_pluginTemplate.git
+[submodule "plugins/pgsqlHealth"]
+	path = plugins/pgsqlHealth
+	url = git@github.com:monobilisim/monokit_pgsqlHealth.git
