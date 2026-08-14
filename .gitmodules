@@ -19,3 +19,9 @@
 [submodule "plugins/pgsqlHealth"]
 	path = plugins/pgsqlHealth
 	url = git@github.com:monobilisim/monokit_pgsqlHealth.git
+[submodule "plugins/redisHealth"]
+	path = plugins/redisHealth
+	url = git@github.com:monobilisim/monokit_redisHealth.git
+[submodule "plugins/valkeyHealth"]
+	path = plugins/valkeyHealth
+	url = git@github.com:monobilisim/monokit_valkeyHealth.git
