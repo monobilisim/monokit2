@@ -34,3 +34,6 @@
 [submodule "plugins/lbPolicy"]
 	path = plugins/lbPolicy
 	url = git@github.com:monobilisim/monokit_lbPolicy.git
+[submodule "plugins/mongodbHealth"]
+	path = plugins/mongodbHealth
+	url = git@github.com:monobilisim/monokit_mongodbHealth.git
