@@ -40,3 +40,6 @@
 [submodule "plugins/vaultHealth"]
 	path = plugins/vaultHealth
 	url = git@github.com:monobilisim/monokit_vaultHealth.git
+[submodule "plugins/zimbraHealth"]
+	path = plugins/zimbraHealth
+	url = git@github.com:monobilisim/monokit_zimbraHealth.git
