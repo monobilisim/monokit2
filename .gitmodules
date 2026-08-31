@@ -31,3 +31,6 @@
 [submodule "plugins/k8sHealth"]
 	path = plugins/k8sHealth
 	url = git@github.com:monobilisim/monokit_k8sHealth.git
+[submodule "plugins/lbPolicy"]
+	path = plugins/lbPolicy
+	url = git@github.com:monobilisim/monokit_lbPolicy.git
