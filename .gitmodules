@@ -25,3 +25,6 @@
 [submodule "plugins/valkeyHealth"]
 	path = plugins/valkeyHealth
 	url = git@github.com:monobilisim/monokit_valkeyHealth.git
+[submodule "plugins/esHealth"]
+	path = plugins/esHealth
+	url = git@github.com:monobilisim/monokit_esHealth.git
