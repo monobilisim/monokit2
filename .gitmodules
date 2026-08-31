@@ -28,3 +28,6 @@
 [submodule "plugins/esHealth"]
 	path = plugins/esHealth
 	url = git@github.com:monobilisim/monokit_esHealth.git
+[submodule "plugins/k8sHealth"]
+	path = plugins/k8sHealth
+	url = git@github.com:monobilisim/monokit_k8sHealth.git
