@@ -37,3 +37,6 @@
 [submodule "plugins/mongodbHealth"]
 	path = plugins/mongodbHealth
 	url = git@github.com:monobilisim/monokit_mongodbHealth.git
+[submodule "plugins/vaultHealth"]
+	path = plugins/vaultHealth
+	url = git@github.com:monobilisim/monokit_vaultHealth.git
