@@ -43,3 +43,6 @@
 [submodule "plugins/zimbraHealth"]
 	path = plugins/zimbraHealth
 	url = git@github.com:monobilisim/monokit_zimbraHealth.git
+[submodule "plugins/opnsenseHealth"]
+	path = plugins/opnsenseHealth
+	url = git@github.com:monobilisim/monokit_opnsenseHealth.git
