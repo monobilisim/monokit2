@@ -73,3 +73,6 @@
 [submodule "plugins/wppconnectHealth"]
 	path = plugins/wppconnectHealth
 	url = git@github.com:monobilisim/monokit_wppconnectHealth.git
+[submodule "plugins/zimbraLdap"]
+	path = plugins/zimbraLdap
+	url = git@github.com:monobilisim/monokit_zimbraLdap.git
