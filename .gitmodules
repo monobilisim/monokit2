@@ -46,3 +46,6 @@
 [submodule "plugins/opnsenseHealth"]
 	path = plugins/opnsenseHealth
 	url = git@github.com:monobilisim/monokit_opnsenseHealth.git
+[submodule "plugins/pmgHealth"]
+	path = plugins/pmgHealth
+	url = git@github.com:monobilisim/monokit_pmgHealth.git
