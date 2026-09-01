@@ -67,3 +67,6 @@
 [submodule "plugins/upCheck"]
 	path = plugins/upCheck
 	url = git@github.com:monobilisim/monokit_upCheck.git
+[submodule "plugins/winHealth"]
+	path = plugins/winHealth
+	url = git@github.com:monobilisim/monokit_winHealth.git
