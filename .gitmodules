@@ -61,3 +61,6 @@
 [submodule "plugins/sshNotifier"]
 	path = plugins/sshNotifier
 	url = git@github.com:monobilisim/monokit_sshNotifier.git
+[submodule "plugins/traefikHealth"]
+	path = plugins/traefikHealth
+	url = git@github.com:monobilisim/monokit_traefikHealth.git
