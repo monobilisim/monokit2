@@ -49,3 +49,6 @@
 [submodule "plugins/pmgHealth"]
 	path = plugins/pmgHealth
 	url = git@github.com:monobilisim/monokit_pmgHealth.git
+[submodule "plugins/postalHealth"]
+	path = plugins/postalHealth
+	url = git@github.com:monobilisim/monokit_postalHealth.git
