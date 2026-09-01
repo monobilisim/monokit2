@@ -58,3 +58,6 @@
 [submodule "plugins/rmqHealth"]
 	path = plugins/rmqHealth
 	url = git@github.com:monobilisim/monokit_rmqHealth.git
+[submodule "plugins/sshNotifier"]
+	path = plugins/sshNotifier
+	url = git@github.com:monobilisim/monokit_sshNotifier.git
