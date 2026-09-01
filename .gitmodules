@@ -55,3 +55,6 @@
 [submodule "plugins/pritunlHealth"]
 	path = plugins/pritunlHealth
 	url = git@github.com:monobilisim/monokit_pritunlHealth.git
+[submodule "plugins/rmqHealth"]
+	path = plugins/rmqHealth
+	url = git@github.com:monobilisim/monokit_rmqHealth.git
