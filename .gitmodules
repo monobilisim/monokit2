@@ -64,3 +64,6 @@
 [submodule "plugins/traefikHealth"]
 	path = plugins/traefikHealth
 	url = git@github.com:monobilisim/monokit_traefikHealth.git
+[submodule "plugins/upCheck"]
+	path = plugins/upCheck
+	url = git@github.com:monobilisim/monokit_upCheck.git
